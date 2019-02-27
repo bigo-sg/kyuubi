@@ -114,12 +114,14 @@ public class SemanticAnalyzerHiveDriverRunHook implements HiveDriverRunHook {
         if(tableName == null || schemaName == null)
             return partitionKeys;
 
+        String schemaNameFormat = schemaName.replace("`","");
+        String tableNameFormat = tableName.replace("`","");
         HiveConf hiveConf = new HiveConf();
         HiveMetaStoreClient client = new HiveMetaStoreClient(hiveConf);
-        if(client.getTable(schemaName, tableName) == null)
+        if(client.getTable(schemaNameFormat, tableNameFormat) == null)
             return partitionKeys;
 
-        List<FieldSchema> partitionFieldSchema = client.getTable(schemaName, tableName).getPartitionKeys();
+        List<FieldSchema> partitionFieldSchema = client.getTable(schemaNameFormat, tableNameFormat).getPartitionKeys();
         for(FieldSchema field : partitionFieldSchema){
             if(field.getName() != null)
                 partitionKeys.add(field.getName().toLowerCase());
