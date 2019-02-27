@@ -35,7 +35,7 @@ class KyuubiServerTab(userName: String, sparkContext: SparkContext)
 
   // KyuubiServerTab renders by different listener's content, identified by user.
   val listener = KyuubiServerMonitor.getListener(userName).getOrElse {
-    val lr = new KyuubiServerListener(sparkContext.conf)
+    val lr = new KyuubiServerListener(sparkContext.conf, null)
     KyuubiServerMonitor.setListener(userName, lr)
     lr
   }

@@ -20,11 +20,21 @@ package yaooqinn.kyuubi.ui
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import org.apache.spark.{KyuubiSparkUtil, SparkConf}
-import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart}
+import org.apache.spark.{ KyuubiSparkUtil, SparkConf }
+import org.apache.spark.scheduler.{ SparkListener, SparkListenerJobStart }
 import org.apache.spark.sql.internal.SQLConf
+import java.io.File
+import java.sql.Timestamp
+import java.time.format.DateTimeFormatter
+import org.apache.commons.io.IOUtils
+import org.apache.commons.io.FileUtils
+import yaooqinn.kyuubi.Logging
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import scala.collection.mutable.LinkedHashMap
 
-class KyuubiServerListener(conf: SparkConf) extends SparkListener {
+class KyuubiServerListener(conf: SparkConf, userAuditLog: File) extends SparkListener with Logging {
 
   private[this] var onlineSessionNum: Int = 0
   private[this] val sessionList = new mutable.LinkedHashMap[String, SessionInfo]
@@ -75,11 +85,11 @@ class KyuubiServerListener(conf: SparkConf) extends SparkListener {
   }
 
   def onStatementStart(
-      id: String,
-      sessionId: String,
-      statement: String,
-      groupId: String,
-      userName: String = "UNKNOWN"): Unit = synchronized {
+    id:        String,
+    sessionId: String,
+    statement: String,
+    groupId:   String,
+    userName:  String = "UNKNOWN"): Unit = synchronized {
     val info = new ExecutionInfo(statement, sessionId, System.currentTimeMillis, userName)
     info.state = ExecutionState.STARTED
     executionList.put(id, info)
@@ -100,6 +110,7 @@ class KyuubiServerListener(conf: SparkConf) extends SparkListener {
       executionList(id).detail = errorMessage
       executionList(id).state = ExecutionState.FAILED
       totalRunning -= 1
+      writeAuditLog(executionList(id))
       trimExecutionIfNecessary()
     }
   }
@@ -108,6 +119,7 @@ class KyuubiServerListener(conf: SparkConf) extends SparkListener {
     executionList(id).finishTimestamp = System.currentTimeMillis
     executionList(id).state = ExecutionState.FINISHED
     totalRunning -= 1
+    writeAuditLog(executionList(id))
     trimExecutionIfNecessary()
   }
 
@@ -127,5 +139,35 @@ class KyuubiServerListener(conf: SparkConf) extends SparkListener {
         sessionList.remove(s._1)
       }
     }
+  }
+
+  private def writeAuditLog(info: ExecutionInfo) {
+    val log = generateLog(info)
+    if (userAuditLog != null) {
+      FileUtils.write(userAuditLog, log, true)
+    } else {
+      warn("not found user audit log for " + log)
+    }
+  }
+
+  private def generateLog(info: ExecutionInfo) = {
+    val mapper = new ObjectMapper() with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+    val statment = info.statement
+    val begin_ts = info.startTimestamp
+    val finished_ts = info.finishTimestamp
+    val state = info.state
+    val user = info.userName
+    val dt_begin = new Timestamp(begin_ts).toLocalDateTime
+    val dt_end = new Timestamp(finished_ts).toLocalDateTime
+    val dur = java.time.Duration.between(dt_begin, dt_end).getSeconds
+    val map = new LinkedHashMap[String, String]
+    map += ("state" -> state.toString)
+    map += ("user" -> user)
+    map += ("begin_time" -> dt_begin.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+    map += ("finished_time" -> dt_end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+    map += ("sql" -> statment)
+    map += ("duration(sec)" -> dur.toString)
+    mapper.writeValueAsString(map) + "\n"
   }
 }

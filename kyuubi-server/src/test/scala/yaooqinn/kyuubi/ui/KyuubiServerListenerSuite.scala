@@ -17,20 +17,20 @@
 
 package yaooqinn.kyuubi.ui
 
-import java.util.{Properties, UUID}
+import java.util.{ Properties, UUID }
 
-import org.apache.spark.{KyuubiSparkUtil, SparkConf, SparkFunSuite}
+import org.apache.spark.{ KyuubiSparkUtil, SparkConf, SparkFunSuite }
 import org.apache.spark.scheduler.SparkListenerJobStart
 import org.apache.spark.sql.internal.SQLConf
 import org.mockito.Mockito.when
 import org.scalatest.mock.MockitoSugar
 
-class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
+class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
   val ip = KyuubiSparkUtil.localHostName()
 
   test("kyuubi server listener") {
     val conf = new SparkConf(loadDefaults = true)
-    val li = new KyuubiServerListener(conf)
+    val li = new KyuubiServerListener(conf, null)
     assert(li.getOnlineSessionNum === 0)
     assert(li.getTotalRunning === 0)
     assert(li.getSessionList.isEmpty)
@@ -100,7 +100,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
     when(jobStart.properties).thenReturn(props)
     when(jobStart.jobId).thenReturn(1)
     val conf = new SparkConf()
-    val li = new KyuubiServerListener(conf)
+    val li = new KyuubiServerListener(conf, null)
     li.onSessionCreated(ip, sessionId)
     assert(li.getSession(sessionId).get.userName === "UNKNOWN")
     li.onStatementStart(statementId, sessionId, "show tables", statementId)
@@ -123,7 +123,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
 
   test("trim session if necessary") {
     val conf = new SparkConf().set(SQLConf.THRIFTSERVER_UI_SESSION_LIMIT.key, "1")
-    val li = new KyuubiServerListener(conf)
+    val li = new KyuubiServerListener(conf, null)
     val sessionId = UUID.randomUUID().toString
     li.onSessionCreated(ip, sessionId)
     val sessionId2 = UUID.randomUUID().toString
@@ -152,9 +152,8 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
     assert(li.getSessionList.size === 1)
     assert(li.getSessionList.forall(_.finishTimestamp === 0L))
 
-
     conf.set(SQLConf.THRIFTSERVER_UI_SESSION_LIMIT.key, "20")
-    val li2 = new KyuubiServerListener(conf)
+    val li2 = new KyuubiServerListener(conf, null)
     (0 until 30).foreach(p => li2.onSessionCreated(ip, p.toString))
     li2.getSessionList.take(5).foreach(_.finishTimestamp = 1)
     li2.onSessionClosed("29")
@@ -166,7 +165,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
 
   test("trim execution if necessary") {
     val conf = new SparkConf().set(SQLConf.THRIFTSERVER_UI_STATEMENT_LIMIT.key, "1")
-    val li = new KyuubiServerListener(conf)
+    val li = new KyuubiServerListener(conf, null)
     val sessionId = UUID.randomUUID().toString
     li.onSessionCreated(ip, sessionId)
     val statementId = UUID.randomUUID().toString
@@ -202,7 +201,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar{
     assert(li.getExecutionList.forall(_.finishTimestamp === 0L))
 
     conf.set(SQLConf.THRIFTSERVER_UI_STATEMENT_LIMIT.key, "20")
-    val li2 = new KyuubiServerListener(conf)
+    val li2 = new KyuubiServerListener(conf, null)
     li2.onSessionCreated(ip, sessionId)
 
     (0 until 30).foreach { id =>

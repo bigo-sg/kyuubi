@@ -256,12 +256,12 @@ private[kyuubi] class SessionManager private(
       this,
       operationManager)
     info(s"Opening session for $username")
-    kyuubiSession.open(sessionConf)
 
     kyuubiSession.setResourcesSessionDir(resourcesRootDir)
     if (isOperationLogEnabled) {
       kyuubiSession.setOperationLogSessionDir(operationLogRootDir)
     }
+    kyuubiSession.open(sessionConf)
 
     val sessionHandle = kyuubiSession.getSessionHandle
     handleToSession.put(sessionHandle, kyuubiSession)

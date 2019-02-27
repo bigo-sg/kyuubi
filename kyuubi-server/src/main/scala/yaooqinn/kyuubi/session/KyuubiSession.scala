@@ -17,22 +17,22 @@
 
 package yaooqinn.kyuubi.session
 
-import java.io.{File, IOException}
+import java.io.{ File, IOException }
 
-import scala.collection.mutable.{HashSet => MHSet}
+import scala.collection.mutable.{ HashSet => MHSet }
 
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hive.service.cli.thrift.TProtocolVersion
-import org.apache.spark.{KyuubiSparkUtil, SparkConf, SparkContext}
+import org.apache.spark.{ KyuubiSparkUtil, SparkConf, SparkContext }
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.StructType
 
-import yaooqinn.kyuubi.{KyuubiSQLException, Logging}
+import yaooqinn.kyuubi.{ KyuubiSQLException, Logging }
 import yaooqinn.kyuubi.auth.KyuubiAuthFactory
 import yaooqinn.kyuubi.cli._
-import yaooqinn.kyuubi.operation.{KyuubiOperation, OperationHandle, OperationManager}
+import yaooqinn.kyuubi.operation.{ KyuubiOperation, OperationHandle, OperationManager }
 import yaooqinn.kyuubi.schema.RowSet
 import yaooqinn.kyuubi.session.security.TokenCollector
 import yaooqinn.kyuubi.spark.SparkSessionWithUGI
@@ -50,14 +50,14 @@ import yaooqinn.kyuubi.utils.KyuubiHadoopUtil
  *
  */
 private[kyuubi] class KyuubiSession(
-    protocol: TProtocolVersion,
-    username: String,
-    password: String,
-    conf: SparkConf,
-    ipAddress: String,
-    withImpersonation: Boolean,
-    sessionManager: SessionManager,
-    operationManager: OperationManager) extends Logging {
+  protocol:          TProtocolVersion,
+  username:          String,
+  password:          String,
+  conf:              SparkConf,
+  ipAddress:         String,
+  withImpersonation: Boolean,
+  sessionManager:    SessionManager,
+  operationManager:  OperationManager) extends Logging {
 
   private val sessionHandle: SessionHandle = new SessionHandle(protocol)
   private val opHandleSet = new MHSet[OperationHandle]
@@ -152,7 +152,7 @@ private[kyuubi] class KyuubiSession(
 
   @throws[KyuubiSQLException]
   def open(sessionConf: Map[String, String]): Unit = {
-    sparkSessionWithUGI.init(sessionConf)
+    sparkSessionWithUGI.init(sessionConf, sessionLogDir.toPath().getParent.toFile())
     lastAccessTime = System.currentTimeMillis
     lastIdleTime = lastAccessTime
   }
@@ -162,7 +162,7 @@ private[kyuubi] class KyuubiSession(
     try {
       getInfoType match {
         case GetInfoType.SERVER_NAME => new GetInfoValue("Kyuubi Server")
-        case GetInfoType.DBMS_NAME => new GetInfoValue("Spark SQL")
+        case GetInfoType.DBMS_NAME   => new GetInfoValue("Spark SQL")
         case GetInfoType.DBMS_VERSION =>
           new GetInfoValue(this.sparkSessionWithUGI.sparkSession.version)
         case _ =>
@@ -251,10 +251,10 @@ private[kyuubi] class KyuubiSession(
 
   @throws[KyuubiSQLException]
   def fetchResults(
-      opHandle: OperationHandle,
-      orientation: FetchOrientation,
-      maxRows: Long,
-      fetchType: FetchType): RowSet = {
+    opHandle:    OperationHandle,
+    orientation: FetchOrientation,
+    maxRows:     Long,
+    fetchType:   FetchType): RowSet = {
     acquire(true)
     try {
       fetchType match {
@@ -270,9 +270,9 @@ private[kyuubi] class KyuubiSession(
 
   @throws[KyuubiSQLException]
   def getDelegationToken(
-      authFactory: KyuubiAuthFactory,
-      owner: String,
-      renewer: String): String = {
+    authFactory: KyuubiAuthFactory,
+    owner:       String,
+    renewer:     String): String = {
     authFactory.getDelegationToken(owner, renewer)
   }
 
@@ -325,19 +325,20 @@ private[kyuubi] class KyuubiSession(
   def isOperationLogEnabled: Boolean = _isOperationLogEnabled
 
   /**
-   * Get the session log dir, which is the parent dir of operation logs
+   * Get the session dir, which is the parent dir of operation logs
    *
    * @return a file representing the parent directory of operation logs
    */
   def getSessionLogDir: File = sessionLogDir
 
   /**
-   * Set the session log dir, which is the parent dir of operation logs
+   * Set the session dir, which is the parent dir of operation logs
    *
    * @param operationLogRootDir the parent dir of the session dir
    */
   def setOperationLogSessionDir(operationLogRootDir: File): Unit = {
-    sessionLogDir = new File(operationLogRootDir,
+    sessionLogDir = new File(
+      operationLogRootDir,
       username + File.separator + sessionHandle.getHandleIdentifier.toString)
     _isOperationLogEnabled = true
     if (!sessionLogDir.exists) {
