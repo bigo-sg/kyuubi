@@ -59,7 +59,9 @@ if [ ${KYUUBI_JAR_NUM} != "1" ]; then
   exit 1
 fi
 
-export KYUUBI_JAR=${KYUUBI_JAR_DIR}/"$(ls ${KYUUBI_JAR_DIR} |grep kyuubi- | grep .jar)"
+#export KYUUBI_JAR=${KYUUBI_JAR_DIR}/"$(ls ${KYUUBI_JAR_DIR} |grep kyuubi- | grep .jar)"
+
+export KYUUBI_JAR=${KYUUBI_JAR_DIR}/*
 
 echo "Kyuubi Server: jar founded:" ${KYUUBI_JAR} >&2
 

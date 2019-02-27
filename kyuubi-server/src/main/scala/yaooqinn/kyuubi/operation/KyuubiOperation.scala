@@ -327,6 +327,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     try {
       statementId = UUID.randomUUID().toString
       info(s"Running query '$statement' with $statementId")
+      new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
       setState(RUNNING)
 
       val classLoader = SparkSQLUtils.getUserJarClassLoader(sparkSession)
@@ -366,6 +367,14 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
       }
       debug(result.queryExecution.toString())
+      val physicalPlanInfo = result.queryExecution.simpleString
+      val num = SqlChecker.getPartNum(physicalPlanInfo)
+      if (!num.isEmpty) {
+        info("found partition " + num.get)
+        if (num.get.toInt > SqlChecker.getPartLimit(conf)) {
+          throw new KyuubiSQLException("found partition " + num.get + " exceed upper limit " + SqlChecker.getPartLimit(conf))
+        }
+      }
       iter = if (incrementalCollect) {
         info("Executing query in incremental collection mode")
         result.toLocalIterator().asScala
