@@ -19,33 +19,35 @@ package yaooqinn.kyuubi.spark
 
 import java.util.concurrent.TimeUnit
 
-import scala.collection.mutable.{HashSet => MHSet}
-import scala.concurrent.{Await, Promise}
+import scala.collection.mutable.{ HashSet => MHSet }
+import scala.concurrent.{ Await, Promise }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
 import org.apache.hadoop.security.UserGroupInformation
-import org.apache.spark.{KyuubiSparkUtil, SparkConf, SparkContext}
+import org.apache.spark.{ KyuubiSparkUtil, SparkConf, SparkContext }
 import org.apache.spark.KyuubiConf._
 import org.apache.spark.KyuubiSparkUtil._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.ui.KyuubiServerTab
 
-import yaooqinn.kyuubi.{KyuubiSQLException, Logging}
+import yaooqinn.kyuubi.{ KyuubiSQLException, Logging }
 import yaooqinn.kyuubi.author.AuthzHelper
-import yaooqinn.kyuubi.ui.{KyuubiServerListener, KyuubiServerMonitor}
-import yaooqinn.kyuubi.utils.{KyuubiHadoopUtil, ReflectUtils}
+import yaooqinn.kyuubi.ui.{ KyuubiServerListener, KyuubiServerMonitor }
+import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
+import java.io.File
 
 class SparkSessionWithUGI(
-    user: UserGroupInformation,
-    conf: SparkConf,
-    cache: SparkSessionCacheManager) extends Logging {
+  user:  UserGroupInformation,
+  conf:  SparkConf,
+  cache: SparkSessionCacheManager) extends Logging {
   private var _sparkSession: SparkSession = _
   private val userName: String = user.getShortUserName
   private val promisedSparkContext = Promise[SparkContext]()
   private var initialDatabase: Option[String] = None
   private var sparkException: Option[Throwable] = None
+  private var userAuditDir: File = _
 
   private lazy val newContext: Thread = {
     val threadName = "SparkContext-Starter-" + userName
@@ -96,7 +98,7 @@ class SparkSessionWithUGI(
             conf.set(SPARK_HADOOP_PREFIX + k, value)
           }
         case USE_DB => initialDatabase = Some("use " + value)
-        case _ =>
+        case _      =>
       }
     }
 
@@ -120,7 +122,7 @@ class SparkSessionWithUGI(
             _sparkSession.conf.set(SPARK_HADOOP_PREFIX + k, value)
           }
         case USE_DB => initialDatabase = Some("use " + value)
-        case _ =>
+        case _      =>
       }
     }
   }
@@ -187,7 +189,7 @@ class SparkSessionWithUGI(
       newContext.join()
     }
 
-    KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf))
+    KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf, new File(userAuditDir, "audit.log")))
     KyuubiServerMonitor.getListener(userName)
       .foreach(_sparkSession.sparkContext.addSparkListener)
     val uiTab = new KyuubiServerTab(userName, _sparkSession.sparkContext)
@@ -195,7 +197,8 @@ class SparkSessionWithUGI(
   }
 
   @throws[KyuubiSQLException]
-  def init(sessionConf: Map[String, String]): Unit = {
+  def init(sessionConf: Map[String, String], userAuditDir: File): Unit = {
+    this.userAuditDir = userAuditDir
     getOrCreate(sessionConf)
 
     try {

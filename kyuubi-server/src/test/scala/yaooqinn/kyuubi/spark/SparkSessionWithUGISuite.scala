@@ -68,7 +68,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
     val ru = UserGroupInformation.createRemoteUser(userName1)
     val sparkSessionWithUGI = new SparkSessionWithUGI(ru, confClone, cache)
     assert(!SparkSessionWithUGI.isPartiallyConstructed(userName1))
-    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty))
+    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty,null))
     assert(e.getCause.isInstanceOf[TimeoutException])
     val se = e.getSuppressed.head
     assert(se.isInstanceOf[SparkException])
@@ -81,14 +81,14 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
   test("test init failed with no such database") {
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, conf, cache)
     val e = intercept[NoSuchDatabaseException](
-      sparkSessionWithUGI.init(Map("use:database" -> "fakedb")))
+      sparkSessionWithUGI.init(Map("use:database" -> "fakedb"), null))
     assert(e.getMessage().contains("fakedb"))
     assert(cache.getAndIncrease(userName).nonEmpty)
   }
 
   test("test init success with empty session conf") {
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, conf, cache)
-    sparkSessionWithUGI.init(Map.empty)
+    sparkSessionWithUGI.init(Map.empty, null)
     assert(sparkSessionWithUGI.sparkSession.sparkContext.sparkUser === userName)
   }
 
@@ -99,21 +99,21 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
 
     AuthzHelper.init(confClone)
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, confClone, cache)
-    sparkSessionWithUGI.init(Map.empty)
+    sparkSessionWithUGI.init(Map.empty, null)
     assert(sparkSessionWithUGI.sparkSession.experimental.extraOptimizations.nonEmpty)
   }
 
   test("test init success with spark properties") {
     val sessionConf = Map("set:hivevar:spark.foo" -> "bar")
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, conf, cache)
-    sparkSessionWithUGI.init(sessionConf)
+    sparkSessionWithUGI.init(sessionConf, null)
     assert(sparkSessionWithUGI.sparkSession.conf.get("spark.foo") === "bar")
   }
 
   test("test init success with hive/hadoop/extra properties") {
     val sessionConf = Map("set:hivevar:foo" -> "bar")
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, conf, cache)
-    sparkSessionWithUGI.init(sessionConf)
+    sparkSessionWithUGI.init(sessionConf, null)
     assert(sparkSessionWithUGI.sparkSession.conf.get("spark.hadoop.foo") === "bar")
   }
 
@@ -122,7 +122,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
     val ru = UserGroupInformation.createRemoteUser(userName1)
     val sessionConf = Map("set:hivevar:spark.foo" -> "bar", "set:hivevar:foo" -> "bar")
     val sparkSessionWithUGI = new SparkSessionWithUGI(ru, conf, cache)
-    sparkSessionWithUGI.init(sessionConf)
+    sparkSessionWithUGI.init(sessionConf, null)
     assert(sparkSessionWithUGI.sparkSession.conf.get("spark.foo") === "bar")
     assert(sparkSessionWithUGI.sparkSession.conf.get("spark.hadoop.foo") === "bar")
     assert(!sparkSessionWithUGI.sparkSession.sparkContext.getConf.contains(KyuubiSparkUtil.KEYTAB))
@@ -134,7 +134,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
     val confClone = conf.clone().set(KyuubiConf.BACKEND_SESSION_WAIT_OTHER_TIMES.key, "3")
     SparkSessionWithUGI.setPartiallyConstructed(userName)
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, confClone, cache)
-    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty))
+    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty, null))
     assert(e.getMessage.startsWith("A partially constructed SparkContext for"))
     assert(e.getMessage.contains(userName))
     assert(e.getMessage.contains("has last more than 15 seconds"))
@@ -151,7 +151,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
     val ru = UserGroupInformation.createRemoteUser(userName1)
     val sparkSessionWithUGI = new SparkSessionWithUGI(ru, confClone, cache)
     assert(!SparkSessionWithUGI.isPartiallyConstructed(userName1))
-    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty))
+    val e = intercept[KyuubiSQLException](sparkSessionWithUGI.init(Map.empty, null))
     assert(e.getCause.isInstanceOf[TimeoutException])
     assert(e.getMessage.startsWith("Get SparkSession"))
   }
@@ -169,7 +169,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
 
   test("stop sparkcontext") {
     val sparkSessionWithUGI = new SparkSessionWithUGI(user, conf, cache)
-    sparkSessionWithUGI.init(Map.empty)
+    sparkSessionWithUGI.init(Map.empty, null)
     val promise = ReflectUtils.getFieldValue(sparkSessionWithUGI,
       "yaooqinn$kyuubi$spark$SparkSessionWithUGI$$promisedSparkContext")
       .asInstanceOf[Promise[SparkContext]]
@@ -184,7 +184,7 @@ class SparkSessionWithUGISuite extends SparkFunSuite {
     val proxyUserName = "Kent"
     val proxyUser = UserGroupInformation.createProxyUser(proxyUserName, user)
     val sparkSessionWithUGI = new SparkSessionWithUGI(proxyUser, conf, cache)
-    sparkSessionWithUGI.init(Map.empty)
+    sparkSessionWithUGI.init(Map.empty, null)
     assert(sparkSessionWithUGI.sparkSession.sparkContext.sparkUser === proxyUserName)
   }
 }

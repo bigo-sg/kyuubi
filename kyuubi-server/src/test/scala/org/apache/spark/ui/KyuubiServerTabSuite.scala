@@ -44,7 +44,7 @@ class KyuubiServerTabSuite extends SparkFunSuite {
 
   test("test listener") {
     assert(tab.listener !== null)
-    val lr = new KyuubiServerListener(sc.conf)
+    val lr = new KyuubiServerListener(sc.conf, null)
     assert(tab.listener !== lr)
     assert(KyuubiServerMonitor.getListener(user).get === tab.listener)
     KyuubiServerMonitor.setListener("user1", lr)
