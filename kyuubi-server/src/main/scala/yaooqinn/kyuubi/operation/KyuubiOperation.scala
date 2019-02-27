@@ -72,6 +72,8 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
   private var iter: Iterator[Row] = _
   private var statementId: String = _
 
+  private var resultList: Option[Array[Row]] = _
+
   private val DEFAULT_FETCH_ORIENTATION_SET: Set[FetchOrientation] =
     Set(FetchOrientation.FETCH_NEXT, FetchOrientation.FETCH_FIRST)
 
@@ -233,11 +235,17 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     validateDefaultFetchOrientation(order)
     assertState(FINISHED)
     setHasResultSet(true)
-    val taken = if (order == FetchOrientation.FETCH_FIRST) {
-      result.toLocalIterator().asScala.take(rowSetSize.toInt)
+    
+    if (order == FetchOrientation.FETCH_FIRST) {
+      logger.info("call fetch first")
+      if (!resultList.isEmpty) {
+        iter = resultList.get.toList.iterator
+      }
     } else {
-      iter.take(rowSetSize.toInt)
+      logger.info("call fetch next")
     }
+    val taken = iter.take(rowSetSize.toInt)
+
     RowSetBuilder.create(getResultSetSchema, taken.toSeq, session.getProtocolVersion)
   }
 
@@ -381,9 +389,15 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       } else {
         val resultLimit = conf.get(OPERATION_RESULT_LIMIT).toInt
         if (resultLimit >= 0) {
-          result.take(resultLimit).toList.toIterator
+          resultList = Some(result.take(resultLimit))
+          logger.info("collect size " + resultList.get.size)
+          resultList.get.toList.iterator
+          //result.take(resultLimit).toList.toIterator
         } else {
-          result.collect().toList.iterator
+          resultList = Some(result.collect())
+          logger.info("collect size " + resultList.get.size)
+          resultList.get.toList.iterator
+          //result.collect().toList.iterator
         }
       }
       setState(FINISHED)
