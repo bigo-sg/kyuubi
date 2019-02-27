@@ -128,6 +128,13 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-minicluster</artifactId>
         </dependency>
+
+      <dependency>
+           <groupId>com.github.jsqlparser</groupId>
+           <artifactId>jsqlparser</artifactId>
+           <version>1.4</version>
+      </dependency>
+
     </dependencies>
 
     <build>
