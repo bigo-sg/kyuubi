@@ -25,7 +25,7 @@ import scala.xml.Node
 import org.apache.commons.lang3.StringEscapeUtils
 import org.apache.spark.ui.UIUtils._
 
-import yaooqinn.kyuubi.ui.{ExecutionInfo, ExecutionState, SessionInfo}
+import yaooqinn.kyuubi.ui.{ ExecutionInfo, ExecutionState, SessionInfo }
 
 /** Page for Spark Web UI that shows statistics of the kyuubi server */
 class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
@@ -39,32 +39,34 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
     val content =
       listener.synchronized { // make sure all parts in this page are consistent
         generateBasicStats() ++
-        <br/> ++
-        <h4>
-        {listener.getOnlineSessionNum} session(s) are online,
-        running {listener.getTotalRunning} SQL statement(s)
-        </h4> ++
-        generateSessionStatsTable() ++
-        generateSQLStatsTable()
+          <br/> ++
+          <h4>
+            { listener.getOnlineSessionNum }
+            session(s) are online,
+        running{ listener.getTotalRunning }
+            SQL statement(s)
+          </h4> ++
+          generateSessionStatsTable(request) ++
+          generateSQLStatsTable(request)
       }
-    UIUtils.headerSparkPage("Kyuubi Server", content, parent, Some(5000))
+    UIUtils.headerSparkPage(request, "Kyuubi Server", content, parent, Some(5000))
   }
 
   /** Generate basic stats of the kyuubi server program */
   private def generateBasicStats(): Seq[Node] = {
     val timeSinceStart = System.currentTimeMillis() - startTime.getTime
-    <ul class ="unstyled">
+    <ul class="unstyled">
       <li>
-        <strong>Started at: </strong> {formatDate(startTime)}
+        <strong>Started at: </strong>{ formatDate(startTime) }
       </li>
       <li>
-        <strong>Time since start: </strong>{formatDurationVerbose(timeSinceStart)}
+        <strong>Time since start: </strong>{ formatDurationVerbose(timeSinceStart) }
       </li>
     </ul>
   }
 
   /** Generate stats of batch statements of the kyuubi server program */
-  private def generateSQLStatsTable(): Seq[Node] = {
+  private def generateSQLStatsTable(request: HttpServletRequest): Seq[Node] = {
     val numStatement = listener.getExecutionList.size
     val table = if (numStatement > 0) {
       val headerRow = Seq("User", "JobID", "GroupID", "Start Time", "Finish Time", "Duration",
@@ -73,23 +75,24 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
 
       def generateDataRow(info: ExecutionInfo): Seq[Node] = {
         val jobLink = info.jobId.map { id: String =>
-          <a href={"%s/jobs/job?id=%s".format(UIUtils.prependBaseUri(parent.basePath), id)}>
-            [{id}]
+          <a href={ "%s/jobs/job?id=%s".format(UIUtils.prependBaseUri(request, parent.basePath), id) }>
+            [{ id }
+            ]
           </a>
         }
         val detail = if (info.state == ExecutionState.FAILED) info.detail else info.executePlan
         <tr>
-          <td>{info.userName}</td>
+          <td>{ info.userName }</td>
           <td>
-            {jobLink}
+            { jobLink }
           </td>
-          <td>{info.groupId}</td>
-          <td>{formatDate(info.startTimestamp)}</td>
-          <td>{if (info.finishTimestamp > 0) formatDate(info.finishTimestamp)}</td>
-          <td>{formatDurationOption(Some(info.totalTime))}</td>
-          <td>{info.statement}</td>
-          <td>{info.state}</td>
-          {errorMessageCell(detail)}
+          <td>{ info.groupId }</td>
+          <td>{ formatDate(info.startTimestamp) }</td>
+          <td>{ if (info.finishTimestamp > 0) formatDate(info.finishTimestamp) }</td>
+          <td>{ formatDurationOption(Some(info.totalTime)) }</td>
+          <td>{ info.statement }</td>
+          <td>{ info.state }</td>
+          { errorMessageCell(detail) }
         </tr>
       }
 
@@ -103,7 +106,7 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
       <h5 id="sqlstat">SQL Statistics</h5> ++
         <div>
           <ul class="unstyled">
-            {table.getOrElse("No statistics have been generated yet.")}
+            { table.getOrElse("No statistics have been generated yet.") }
           </ul>
         </div>
 
@@ -120,22 +123,21 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
       })
     val details = if (isMultiline) {
       // scalastyle:off
-      <span onclick="this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')"
-            class="expand-details">
+      <span onclick="this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')" class="expand-details">
         + details
       </span> ++
-      <div class="stacktrace-details collapsed">
-        <pre>{errorMessage}</pre>
-      </div>
+        <div class="stacktrace-details collapsed">
+          <pre>{ errorMessage }</pre>
+        </div>
       // scalastyle:on
     } else {
       ""
     }
-    <td>{errorSummary}{details}</td>
+    <td>{ errorSummary }{ details }</td>
   }
 
   /** Generate stats of batch sessions of the kyuubi server program */
-  private def generateSessionStatsTable(): Seq[Node] = {
+  private def generateSessionStatsTable(request: HttpServletRequest): Seq[Node] = {
     val sessionList = listener.getSessionList
     val numBatches = sessionList.size
     val table = if (numBatches > 0) {
@@ -144,15 +146,15 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
         "Total Execute")
       def generateDataRow(session: SessionInfo): Seq[Node] = {
         val sessionLink = "%s/%s/session?id=%s"
-          .format(UIUtils.prependBaseUri(parent.basePath), parent.prefix, session.sessionId)
+          .format(UIUtils.prependBaseUri(request, parent.basePath), parent.prefix, session.sessionId)
         <tr>
-          <td> {session.userName} </td>
-          <td> {session.ip} </td>
-          <td> <a href={sessionLink}> {session.sessionId} </a> </td>
-          <td> {formatDate(session.startTimestamp)} </td>
-          <td> {if (session.finishTimestamp > 0) formatDate(session.finishTimestamp)} </td>
-          <td> {formatDurationOption(Some(session.totalTime))} </td>
-          <td> {session.totalExecution.toString} </td>
+          <td> { session.userName } </td>
+          <td> { session.ip } </td>
+          <td> <a href={ sessionLink }> { session.sessionId } </a> </td>
+          <td> { formatDate(session.startTimestamp) } </td>
+          <td> { if (session.finishTimestamp > 0) formatDate(session.finishTimestamp) } </td>
+          <td> { formatDurationOption(Some(session.totalTime)) } </td>
+          <td> { session.totalExecution.toString } </td>
         </tr>
       }
       Some(UIUtils.listingTable(
@@ -169,15 +171,14 @@ class KyuubiServerPage(parent: KyuubiServerTab) extends WebUIPage("") {
 
     val content =
       <h5 id="sessionstat">Session Statistics</h5> ++
-      <div>
-        <ul class="unstyled">
-          {table.getOrElse("No statistics have been generated yet.")}
-        </ul>
-      </div>
+        <div>
+          <ul class="unstyled">
+            { table.getOrElse("No statistics have been generated yet.") }
+          </ul>
+        </div>
 
     content
   }
-
 
   /**
    * Returns a human-readable string representing a duration such as "5 second 35 ms"

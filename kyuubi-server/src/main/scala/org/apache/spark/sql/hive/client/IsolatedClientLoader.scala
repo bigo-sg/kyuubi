@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.internal.NonClosableMutableURLClassLoader
 import org.apache.spark.util.MutableURLClassLoader
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 
 import yaooqinn.kyuubi.Logging
 
@@ -33,27 +34,27 @@ import yaooqinn.kyuubi.Logging
  */
 private[hive] object IsolatedClientLoader {
   def hiveVersion(version: String): HiveVersion = version match {
-    case "12" | "0.12" | "0.12.0" => hive.v12
+    case "12" | "0.12" | "0.12.0"            => hive.v12
     case "13" | "0.13" | "0.13.0" | "0.13.1" => hive.v13
-    case "14" | "0.14" | "0.14.0" => hive.v14
-    case "1.0" | "1.0.0" => hive.v1_0
-    case "1.1" | "1.1.0" => hive.v1_1
+    case "14" | "0.14" | "0.14.0"            => hive.v14
+    case "1.0" | "1.0.0"                     => hive.v1_0
+    case "1.1" | "1.1.0"                     => hive.v1_1
     case "1.2" | "1.2.0" | "1.2.1" | "1.2.2" => hive.v1_2
   }
 }
 
 private[hive] class IsolatedClientLoader(
-    val version: HiveVersion,
-    val sparkConf: SparkConf,
-    val hadoopConf: Configuration,
-    val execJars: Seq[URL] = Seq.empty,
-    val config: Map[String, String] = Map.empty,
-    val isolationOn: Boolean = true,
-    val sharesHadoopClasses: Boolean = true,
-    val rootClassLoader: ClassLoader = ClassLoader.getSystemClassLoader.getParent.getParent,
-    val baseClassLoader: ClassLoader = Thread.currentThread().getContextClassLoader,
-    val sharedPrefixes: Seq[String] = Seq.empty,
-    val barrierPrefixes: Seq[String] = Seq.empty)
+  val version:             HiveVersion,
+  val sparkConf:           SparkConf,
+  val hadoopConf:          Configuration,
+  val execJars:            Seq[URL]            = Seq.empty,
+  val config:              Map[String, String] = Map.empty,
+  val isolationOn:         Boolean             = true,
+  val sharesHadoopClasses: Boolean             = true,
+  val rootClassLoader:     ClassLoader         = ClassLoader.getSystemClassLoader.getParent.getParent,
+  val baseClassLoader:     ClassLoader         = Thread.currentThread().getContextClassLoader,
+  val sharedPrefixes:      Seq[String]         = Seq.empty,
+  val barrierPrefixes:     Seq[String]         = Seq.empty)
   extends Logging {
 
   // Check to make sure that the root classloader does not know about Hive.
@@ -75,7 +76,8 @@ private[hive] class IsolatedClientLoader(
 
   /** The isolated client interface to Hive. */
   private[hive] def createClient(): HiveClient = synchronized {
-    new HiveClientImpl(version, sparkConf, hadoopConf, config, baseClassLoader, this)
+    val warehouseDir = Option(hadoopConf.get(ConfVars.METASTOREWAREHOUSE.varname))
+    new HiveClientImpl(version, warehouseDir, sparkConf, hadoopConf, config, baseClassLoader, this)
   }
 
   /**
