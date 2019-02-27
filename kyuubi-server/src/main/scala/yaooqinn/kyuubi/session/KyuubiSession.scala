@@ -325,14 +325,14 @@ private[kyuubi] class KyuubiSession(
   def isOperationLogEnabled: Boolean = _isOperationLogEnabled
 
   /**
-   * Get the session dir, which is the parent dir of operation logs
+   * Get the session log dir, which is the parent dir of operation logs
    *
    * @return a file representing the parent directory of operation logs
    */
   def getSessionLogDir: File = sessionLogDir
 
   /**
-   * Set the session dir, which is the parent dir of operation logs
+   * Set the session log dir, which is the parent dir of operation logs
    *
    * @param operationLogRootDir the parent dir of the session dir
    */
