@@ -97,7 +97,7 @@ private[kyuubi] class SessionManager private(
       if (operationLogRootDir.exists()) {
         info("Operation log root directory is created: " + operationLogRootDir.getAbsolutePath)
         try {
-          FileUtils.forceDeleteOnExit(operationLogRootDir)
+          //FileUtils.forceDeleteOnExit(operationLogRootDir)
         } catch {
           case e: IOException =>
             warn("Failed to schedule cleanup Kyuubi Server's operation logging root" +
@@ -229,7 +229,7 @@ private[kyuubi] class SessionManager private(
       execPool = null
     }
     cleanupResourcesRootDir()
-    cleanupLoggingRootDir()
+    //cleanupLoggingRootDir()
   }
 
   /**
