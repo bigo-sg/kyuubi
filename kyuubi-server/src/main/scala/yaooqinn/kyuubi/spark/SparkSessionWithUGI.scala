@@ -171,9 +171,9 @@ class SparkSessionWithUGI(
           classOf[SparkSession].getName,
           Seq(classOf[SparkContext]),
           Seq(context)).asInstanceOf[SparkSession]
-        val ext = new SparkSessionExtensions
         val extensionConfOption = conf.getOption("spark.sql.extensions")
         if (extensionConfOption.isDefined) {
+          val ext = new SparkSessionExtensions	
           info("reflect extension " + extensionConfOption.get)
           val extensionConfClassName = extensionConfOption.get
           val extensionConfClass = ReflectUtils.findClass(extensionConfClassName)
