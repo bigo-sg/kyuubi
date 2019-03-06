@@ -37,6 +37,7 @@ import yaooqinn.kyuubi.author.AuthzHelper
 import yaooqinn.kyuubi.ui.{ KyuubiServerListener, KyuubiServerMonitor }
 import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
 import java.io.File
+import org.apache.spark.sql.SparkSessionExtensions
 
 class SparkSessionWithUGI(
   user:  UserGroupInformation,
@@ -170,6 +171,18 @@ class SparkSessionWithUGI(
           classOf[SparkSession].getName,
           Seq(classOf[SparkContext]),
           Seq(context)).asInstanceOf[SparkSession]
+        val extensionConfOption = conf.getOption("spark.sql.extensions")
+        if (extensionConfOption.isDefined) {
+          val ext = new SparkSessionExtensions	
+          info("reflect extension " + extensionConfOption.get)
+          val extensionConfClassName = extensionConfOption.get
+          val extensionConfClass = ReflectUtils.findClass(extensionConfClassName)
+          val extensionConf = extensionConfClass.newInstance()
+            .asInstanceOf[SparkSessionExtensions => Unit]
+          extensionConf(ext)
+          ReflectUtils.setFieldValue(_sparkSession, "extensions", ext)
+          info("extension finished")
+        }
       }
       cache.set(userName, _sparkSession)
     } catch {
