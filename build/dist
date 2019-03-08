@@ -138,6 +138,7 @@ echo "Kyuubi $VERSION $GITREVSTRING built for Spark $SPARK_VERSION" > "$DISTDIR/
 echo "Build flags: $@" >> "$DISTDIR/RELEASE"
 
 # Copy jar
+wget http://central.maven.org/maven2/com/github/jsqlparser/jsqlparser/1.4/jsqlparser-1.4.jar -P "$DISTDIR/lib/"
 cp "$KYUUBI_HOME/kyuubi-server/target/kyuubi-server-$VERSION.jar" "$DISTDIR/lib/"
 # Copy license and ASF files
 cp "$KYUUBI_HOME/LICENSE" "$DISTDIR"

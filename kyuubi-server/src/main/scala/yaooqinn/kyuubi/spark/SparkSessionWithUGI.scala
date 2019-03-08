@@ -202,7 +202,7 @@ class SparkSessionWithUGI(
       newContext.join()
     }
 
-    KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf, new File(userAuditDir, "audit.log")))
+    KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf, userAuditDir))
     KyuubiServerMonitor.getListener(userName)
       .foreach(_sparkSession.sparkContext.addSparkListener)
     val uiTab = new KyuubiServerTab(userName, _sparkSession.sparkContext)

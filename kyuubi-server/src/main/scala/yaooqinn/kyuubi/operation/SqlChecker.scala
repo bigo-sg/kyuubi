@@ -6,7 +6,7 @@ object SqlChecker {
   val partitions_regex = "PartitionCount: (\\d+),".r
 
   def getPartLimit(conf: RuntimeConfig) = {
-    conf.get("query.partition.limit", "10").toInt
+    conf.get("spark.kyuubi.query.partition.limit", "10").toInt
   }
 
   def getPartNum(plan: String) = {

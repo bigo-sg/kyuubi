@@ -33,8 +33,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import scala.collection.mutable.LinkedHashMap
+import java.time.LocalDate
 
-class KyuubiServerListener(conf: SparkConf, userAuditLog: File) extends SparkListener with Logging {
+class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkListener with Logging {
 
   private[this] var onlineSessionNum: Int = 0
   private[this] val sessionList = new mutable.LinkedHashMap[String, SessionInfo]
@@ -43,6 +44,7 @@ class KyuubiServerListener(conf: SparkConf, userAuditLog: File) extends SparkLis
     conf.getInt(SQLConf.THRIFTSERVER_UI_STATEMENT_LIMIT.key, 200)
   private[this] val retainedSessions = conf.getInt(SQLConf.THRIFTSERVER_UI_SESSION_LIMIT.key, 200)
   private[this] var totalRunning = 0
+  private val audit_name_template = "audit_xx.log"
 
   def getOnlineSessionNum: Int = synchronized { onlineSessionNum }
 
@@ -143,7 +145,8 @@ class KyuubiServerListener(conf: SparkConf, userAuditLog: File) extends SparkLis
 
   private def writeAuditLog(info: ExecutionInfo) {
     val log = generateLog(info)
-    if (userAuditLog != null) {
+    if (userAuditDir != null) {
+      val userAuditLog = new File(userAuditDir, audit_name_template.replace("xx", LocalDate.now.toString))
       FileUtils.write(userAuditLog, log, true)
     } else {
       warn("not found user audit log for " + log)
