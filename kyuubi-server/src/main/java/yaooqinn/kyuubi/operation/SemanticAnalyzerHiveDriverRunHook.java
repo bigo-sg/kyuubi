@@ -71,9 +71,9 @@ public class SemanticAnalyzerHiveDriverRunHook implements HiveDriverRunHook {
         processSQL(str);
     }
 
-    public void processSQL(String sql) throws Exception{
+    public List<String> processSQL(String sql) throws Exception{
         if(sql == null || sql == "")
-            return;
+            return null;
         List<String> lst = Arrays.asList(sql.toUpperCase().split(" "));
         if(lst.contains("CREATE") || lst.contains("INSERT")){
             processOtherTypeSelect(sql);
@@ -82,31 +82,35 @@ public class SemanticAnalyzerHiveDriverRunHook implements HiveDriverRunHook {
         try{
             stmt = CCJSqlParserUtil.parse(sql);
         }catch (Exception e){
-            return;
+            return null;
         }
+        
+        if (stmt instanceof Select) {
+			// fetch all tables' partition, store in tablePartition.
+			TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
+			List<String> tableList = tablesNamesFinder.getTableList(stmt);
+			List<String> tableNames = new ArrayList<String>();
+			for (String str : tableList) {
+				if (str.contains(".")) {
+					String schemaName = str.substring(0, str.indexOf("."));
+					String tableName = str.substring(str.lastIndexOf(".") + 1);
+					tablePartition.put(str, fetchPartitionKeys(schemaName, tableName));
+					tableNames.add(tableName);
+				}
+			}
+			Select select = (Select) stmt;
+			SelectBody selectBody = select.getSelectBody();
+			processSelectBody(selectBody);
 
-        if(stmt instanceof Select) {
-            // fetch all tables' partition, store in tablePartition.
-            TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
-            List<String> tableList = tablesNamesFinder.getTableList(stmt);
-            for (String str : tableList) {
-                if (str.contains(".")) {
-                    String schemaName = str.substring(0, str.indexOf("."));
-                    String tableName = str.substring(str.lastIndexOf(".") + 1);
-                    tablePartition.put(str, fetchPartitionKeys(schemaName, tableName));
-                }
-            }
-            Select select = (Select) stmt;
-            SelectBody selectBody = select.getSelectBody();
-            processSelectBody(selectBody);
-
-            List<WithItem> withItems = select.getWithItemsList();
-            if (withItems == null)
-                return;
-            for (WithItem withItem : withItems) {
-                processSelectBody(withItem.getSelectBody());
-            }
-        }
+			List<WithItem> withItems = select.getWithItemsList();
+			if (withItems == null)
+				return tableNames;
+			for (WithItem withItem : withItems) {
+				processSelectBody(withItem.getSelectBody());
+			}
+			return tableNames;
+		}
+        return null;
     }
 
     private List<String> fetchPartitionKeys(String schemaName, String tableName) throws Exception{

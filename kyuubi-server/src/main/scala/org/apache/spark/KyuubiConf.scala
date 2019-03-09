@@ -164,14 +164,14 @@ object KyuubiConf {
       .doc("The check interval for frontend session/operation timeout, which can be disabled by" +
         " setting to zero or negative value.")
       .timeConf(TimeUnit.MILLISECONDS)
-      .createWithDefault(TimeUnit.HOURS.toMillis(6L))
+      .createWithDefault(TimeUnit.MINUTES.toMillis(1L))
 
   val FRONTEND_IDLE_SESSION_TIMEOUT: ConfigEntry[Long] =
     KyuubiConfigBuilder("spark.kyuubi.frontend.session.timeout")
       .doc("The check interval for session/operation timeout, which can be disabled by setting" +
         " to zero or negative value.")
       .timeConf(TimeUnit.MILLISECONDS)
-      .createWithDefault(TimeUnit.HOURS.toMillis(8L))
+      .createWithDefault(TimeUnit.MINUTES.toMillis(10L))
 
   val FRONTEND_IDLE_SESSION_CHECK_OPERATION: ConfigEntry[Boolean] =
     KyuubiConfigBuilder("spark.kyuubi.frontend.session.check.operation")
@@ -282,7 +282,7 @@ object KyuubiConf {
     KyuubiConfigBuilder("spark.kyuubi.backend.session.idle.timeout")
       .doc("SparkSession timeout")
       .timeConf(TimeUnit.MILLISECONDS)
-      .createWithDefault(TimeUnit.MINUTES.toMillis(30L))
+      .createWithDefault(TimeUnit.MINUTES.toMillis(10L))
 
   val BACKEND_SESSION_LOCAL_DIR: ConfigEntry[String] =
     KyuubiConfigBuilder("spark.kyuubi.backend.session.local.dir")

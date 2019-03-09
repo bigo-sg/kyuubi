@@ -17,16 +17,16 @@
 
 package yaooqinn.kyuubi.operation
 
-import java.io.{File, FileNotFoundException}
+import java.io.{ File, FileNotFoundException }
 import java.security.PrivilegedExceptionAction
 import java.util.UUID
-import java.util.concurrent.{Future, RejectedExecutionException}
+import java.util.concurrent.{ Future, RejectedExecutionException }
 
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
 import org.apache.commons.lang3.StringUtils
-import org.apache.hadoop.fs.{FileUtil, Path}
+import org.apache.hadoop.fs.{ FileUtil, Path }
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException
 import org.apache.hadoop.hive.ql.session.OperationLog
@@ -34,18 +34,19 @@ import org.apache.hive.service.cli.thrift.TProtocolVersion
 import org.apache.spark.KyuubiConf._
 import org.apache.spark.KyuubiSparkUtil
 import org.apache.spark.scheduler.cluster.KyuubiSparkExecutorUtils
-import org.apache.spark.sql.{AnalysisException, DataFrame, Row, SparkSQLUtils}
+import org.apache.spark.sql.{ AnalysisException, DataFrame, Row, SparkSQLUtils }
 import org.apache.spark.sql.catalyst.catalog.FunctionResource
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.execution.command.AddJarCommand
 import org.apache.spark.sql.types._
 
-import yaooqinn.kyuubi.{KyuubiSQLException, Logging}
+import yaooqinn.kyuubi.{ KyuubiSQLException, Logging }
 import yaooqinn.kyuubi.cli.FetchOrientation
-import yaooqinn.kyuubi.schema.{RowSet, RowSetBuilder}
+import yaooqinn.kyuubi.schema.{ RowSet, RowSetBuilder }
 import yaooqinn.kyuubi.session.KyuubiSession
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.ReflectUtils
+import java.util.ArrayList
 
 class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging {
 
@@ -109,7 +110,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
   private def checkState(state: OperationState): Boolean = {
     this.state == state
   }
-  
+
   def isClosedOrCanceled: Boolean = {
     checkState(CLOSED) || checkState(CANCELED)
   }
@@ -235,7 +236,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     validateDefaultFetchOrientation(order)
     assertState(FINISHED)
     setHasResultSet(true)
-    
+
     if (order == FetchOrientation.FETCH_FIRST) {
       logger.info("call fetch first")
       if (!resultList.isEmpty) {
@@ -267,8 +268,8 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
    */
   @throws[KyuubiSQLException]
   private def validateFetchOrientation(
-      orientation: FetchOrientation,
-      supportedOrientations: Set[FetchOrientation]): Unit = {
+    orientation:           FetchOrientation,
+    supportedOrientations: Set[FetchOrientation]): Unit = {
     if (!supportedOrientations.contains(orientation)) {
       throw new KyuubiSQLException(
         "The fetch type " + orientation.toString + " is not supported for this resultset", "HY106")
@@ -335,7 +336,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     try {
       statementId = UUID.randomUUID().toString
       info(s"Running query '$statement' with $statementId")
-      new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
+      val inputTables = new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
       setState(RUNNING)
 
       val classLoader = SparkSQLUtils.getUserJarClassLoader(sparkSession)
@@ -357,8 +358,9 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         case c if c.nodeName == "CreateFunctionCommand" =>
           val resources =
             ReflectUtils.getFieldValue(c, "resources").asInstanceOf[Seq[FunctionResource]]
-          resources.foreach { case FunctionResource(_, uri) =>
-            localizeAndAndResource(uri)
+          resources.foreach {
+            case FunctionResource(_, uri) =>
+              localizeAndAndResource(uri)
           }
         case a if a.nodeName == "AddJarCommand" =>
           val path = ReflectUtils.getFieldValue(a, "path").asInstanceOf[String]
@@ -375,11 +377,12 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
       }
       debug(result.queryExecution.toString())
-      val physicalPlanInfo = result.queryExecution.simpleString
-      val num = SqlChecker.getPartNum(physicalPlanInfo)
-      if (!num.isEmpty) {
-        info("found partition " + num.get)
-        if (num.get.toInt > SqlChecker.getPartLimit(conf)) {
+      if (inputTables != null) {
+        info("table num " + inputTables.size)
+        val physicalPlanInfo = result.queryExecution.simpleString
+        val validPart = SqlChecker.checkPartitionExceed(inputTables.asScala, conf, physicalPlanInfo)
+        if (!validPart) {
+          val num = SqlChecker.getPartNum(physicalPlanInfo)
           throw new KyuubiSQLException("found partition " + num.get + " exceed upper limit " + SqlChecker.getPartLimit(conf))
         }
       }
