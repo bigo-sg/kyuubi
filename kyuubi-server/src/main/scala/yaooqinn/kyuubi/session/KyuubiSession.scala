@@ -235,6 +235,7 @@ private[kyuubi] class KyuubiSession(
     try {
       operationManager.closeOperation(opHandle)
       opHandleSet.remove(opHandle)
+      info("close operation " + opHandle + " for user " + username)
     } finally {
       release(true)
     }
@@ -289,6 +290,17 @@ private[kyuubi] class KyuubiSession(
   def closeExpiredOperations: Unit = {
     if (opHandleSet.nonEmpty) {
       closeTimedOutOperations(operationManager.removeExpiredOperations(opHandleSet.toSeq))
+      var allOver = true
+      for (op <- opHandleSet.toSeq) {
+        val state = operationManager.getOperation(op).getStatus.getState
+        if (!state.isTerminal) {
+          allOver = false
+        }
+      }
+      if (allOver && lastIdleTime == 0) {
+        warn("operation all over for " + sessionHandle)
+        lastIdleTime = System.currentTimeMillis()
+      }
     }
   }
 
@@ -366,7 +378,8 @@ private[kyuubi] class KyuubiSession(
    * @param resourcesRootDir the parent dir of the session dir
    */
   def setResourcesSessionDir(resourcesRootDir: File): Unit = {
-    sessionResourcesDir = new File(resourcesRootDir,
+    sessionResourcesDir = new File(
+      resourcesRootDir,
       username + File.separator + sessionHandle.getHandleIdentifier.toString + "_resources")
     if (sessionResourcesDir.exists() && !sessionResourcesDir.isDirectory) {
       throw new RuntimeException("The resources directory exists but is not a directory: " +

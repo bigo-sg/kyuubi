@@ -40,6 +40,8 @@ import yaooqinn.kyuubi.schema.SchemaMapper
 import yaooqinn.kyuubi.service.{AbstractService, ServiceException, ServiceUtils}
 import yaooqinn.kyuubi.session.SessionHandle
 import yaooqinn.kyuubi.utils.NamedThreadFactory
+import org.apache.spark.sql.SparkSession
+import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
 
 /**
  * [[FrontendService]] keeps compatible with all kinds of Hive JDBC/Thrift Client Connections
@@ -297,6 +299,10 @@ private[kyuubi] class FrontendService private(name: String, beService: BackendSe
   override def ExecuteStatement(req: TExecuteStatementReq): TExecuteStatementResp = {
     val resp = new TExecuteStatementResp
     try {
+      debug("active session " + SparkSession.getActiveSession.isDefined)
+      debug("default session " + SparkSession.getDefaultSession.isDefined)
+      SparkSession.clearActiveSession
+      //ReflectUtils.invokeMethod(SparkSession, "cleanupAnyExistingSession")
       val sessionHandle = new SessionHandle(req.getSessionHandle)
       val statement = req.getStatement
       val runAsync = req.isRunAsync

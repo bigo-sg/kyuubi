@@ -219,6 +219,7 @@ class SparkSessionWithUGI(
         KyuubiHadoopUtil.doAs(user) {
           _sparkSession.sql(db)
         }
+        SparkSession.clearActiveSession
       }
     } catch {
       case e: Exception =>

@@ -44,9 +44,11 @@ object KyuubiServerMonitor {
   def detachUITab(user: String): Unit = {
     listeners.remove(user)
     uiTabs.get(user).foreach(_.detach())
+    uiTabs.remove(user)
   }
 
   def detachAllUITabs(): Unit = {
     uiTabs.values.foreach(_.detach())
+    uiTabs.clear()
   }
 }

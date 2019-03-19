@@ -376,7 +376,7 @@ object KyuubiConf {
     KyuubiConfigBuilder("spark.kyuubi.operation.idle.timeout")
       .doc("Operation will be closed when it's not accessed for this duration of time")
       .timeConf(TimeUnit.MILLISECONDS)
-      .createWithDefault(TimeUnit.MINUTES.toMillis(30L))
+      .createWithDefault(TimeUnit.MINUTES.toMillis(60L))
 
   val OPERATION_INCREMENTAL_COLLECT: ConfigEntry[Boolean] =
     KyuubiConfigBuilder("spark.kyuubi.operation.incremental.collect")

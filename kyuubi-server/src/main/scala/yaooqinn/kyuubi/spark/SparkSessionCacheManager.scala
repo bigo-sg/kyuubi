@@ -19,7 +19,7 @@ package yaooqinn.kyuubi.spark
 
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
+import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeUnit }
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConverters._
@@ -32,8 +32,9 @@ import org.apache.spark.sql.SparkSession
 import yaooqinn.kyuubi.Logging
 import yaooqinn.kyuubi.service.AbstractService
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
+import org.apache.spark.SparkEnv
 
-class SparkSessionCacheManager private(name: String) extends AbstractService(name) with Logging {
+class SparkSessionCacheManager private (name: String) extends AbstractService(name) with Logging {
 
   def this() = this(classOf[SparkSessionCacheManager].getSimpleName)
 
@@ -53,16 +54,21 @@ class SparkSessionCacheManager private(name: String) extends AbstractService(nam
           warn(s"SparkSession for $user might already be stopped by forces outside Kyuubi," +
             s" cleaning it..")
           removeSparkSession(user)
+          SparkEnv.remove(user)
         case (user, (_, times)) if times.get() > 0 =>
-          debug(s"There are $times active connection(s) bound to the SparkSession instance" +
+          info(s"There are $times active connection(s) bound to the SparkSession instance" +
             s" of $user ")
-        case (user, (_, _)) if !userLatestLogout.containsKey(user) =>
-        case (user, (session, _))
-          if userLatestLogout.get(user) + idleTimeout <= System.currentTimeMillis() =>
-          info(s"Stopping idle SparkSession for user [$user].")
-          removeSparkSession(user)
-          session.stop()
-          System.setProperty("SPARK_YARN_MODE", "true")
+        case (user, (_, _)) if !userLatestLogout.containsKey(user) => info(s"not found user $user logout record")
+        case (user, (session, _)) =>
+          val latestLogout = userLatestLogout.get(user)
+          info(s"user $user latest logout $latestLogout ")
+          if (latestLogout + idleTimeout <= System.currentTimeMillis()) {
+            warn(s"Stopping idle SparkSession for user [$user].")
+            removeSparkSession(user)
+            session.stop()
+            SparkEnv.remove(user)
+            System.setProperty("SPARK_YARN_MODE", "true")
+          }
         case _ =>
       }
     }

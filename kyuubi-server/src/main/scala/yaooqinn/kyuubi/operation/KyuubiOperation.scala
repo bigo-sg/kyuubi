@@ -215,7 +215,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
 
   def close(): Unit = {
     // RDDs will be cleaned automatically upon garbage collection.
-    debug(s"CLOSING $statementId")
+    info(s"CLOSING $statementId")
     cleanup(CLOSED)
     cleanupOperationLog()
     sparkSession.sparkContext.clearJobGroup()
@@ -471,7 +471,8 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       false
     } else {
       // check only when it's in terminal state
-      state.isTerminal && lastAccessTime + operationTimeout <= System.currentTimeMillis()
+      //state.isTerminal && lastAccessTime + operationTimeout <= System.currentTimeMillis()
+      lastAccessTime + operationTimeout <= System.currentTimeMillis()
     }
   }
 }

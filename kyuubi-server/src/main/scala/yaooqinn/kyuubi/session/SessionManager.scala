@@ -17,7 +17,7 @@
 
 package yaooqinn.kyuubi.session
 
-import java.io.{File, IOException}
+import java.io.{ File, IOException }
 import java.util.Date
 import java.util.concurrent._
 
@@ -28,10 +28,10 @@ import org.apache.hive.service.cli.thrift.TProtocolVersion
 import org.apache.spark.KyuubiConf._
 import org.apache.spark.SparkConf
 
-import yaooqinn.kyuubi.{KyuubiSQLException, Logging}
+import yaooqinn.kyuubi.{ KyuubiSQLException, Logging }
 import yaooqinn.kyuubi.operation.OperationManager
 import yaooqinn.kyuubi.server.KyuubiServer
-import yaooqinn.kyuubi.service.{CompositeService, ServiceException}
+import yaooqinn.kyuubi.service.{ CompositeService, ServiceException }
 import yaooqinn.kyuubi.spark.SparkSessionCacheManager
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.NamedThreadFactory
@@ -39,8 +39,8 @@ import yaooqinn.kyuubi.utils.NamedThreadFactory
 /**
  * A SessionManager for managing [[KyuubiSession]]s
  */
-private[kyuubi] class SessionManager private(
-    name: String) extends CompositeService(name) with Logging {
+private[kyuubi] class SessionManager private (
+  name: String) extends CompositeService(name) with Logging {
   private val operationManager = new OperationManager()
   private val cacheManager = new SparkSessionCacheManager()
   private val handleToSession = new ConcurrentHashMap[SessionHandle, KyuubiSession]
@@ -142,11 +142,16 @@ private[kyuubi] class SessionManager private(
         while (!shutdown) {
           val current: Long = System.currentTimeMillis
           handleToSession.values.asScala.foreach { session =>
+            val sessionUser = session.getUserName
+            val noOperationTime = session.getNoOperationTime
+            val lastAccessTime = session.getLastAccessTime
+            info(s"""current sessionTimeout $sessionTimeout, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, 
+User $sessionUser""")
             if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
               val handle: SessionHandle = session.getSessionHandle
               warn("Session " + handle + " is Timed-out (last access: "
-                + new Date(session.getLastAccessTime) + ") and will be closed")
+                + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
               try {
                 closeSession(handle)
               } catch {
@@ -240,12 +245,12 @@ private[kyuubi] class SessionManager private(
    */
   @throws[KyuubiSQLException]
   def openSession(
-      protocol: TProtocolVersion,
-      username: String,
-      password: String,
-      ipAddress: String,
-      sessionConf: Map[String, String],
-      withImpersonation: Boolean): SessionHandle = {
+    protocol:          TProtocolVersion,
+    username:          String,
+    password:          String,
+    ipAddress:         String,
+    sessionConf:       Map[String, String],
+    withImpersonation: Boolean): SessionHandle = {
     val kyuubiSession = new KyuubiSession(
       protocol,
       username,
@@ -296,6 +301,7 @@ private[kyuubi] class SessionManager private(
     }
     cacheManager.decrease(sessionUser)
     session.close()
+    warn("close one  session for " + sessionUser)
   }
 
   def getOperationMgr: OperationManager = operationManager
