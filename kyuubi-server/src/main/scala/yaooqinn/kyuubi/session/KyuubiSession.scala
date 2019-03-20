@@ -298,26 +298,21 @@ private[kyuubi] class KyuubiSession(
         }
       }
       if (allOver && lastIdleTime == 0) {
-        warn("operation all over for " + sessionHandle)
+        warn(s"operation all over for $sessionHandle of $username")
         lastIdleTime = System.currentTimeMillis()
       }
     }
   }
 
   private def closeTimedOutOperations(operations: Seq[KyuubiOperation]): Unit = {
-    acquire(false)
-    try {
-      operations.foreach { op =>
-        opHandleSet.remove(op.getHandle)
-        try {
-          op.close()
-        } catch {
-          case e: Exception =>
-            warn("Exception is thrown closing timed-out operation " + op.getHandle, e)
-        }
+    operations.foreach { op =>
+      opHandleSet.remove(op.getHandle)
+      try {
+        op.close()
+      } catch {
+        case e: Exception =>
+          warn("Exception is thrown closing timed-out operation " + op.getHandle, e)
       }
-    } finally {
-      release(false)
     }
   }
 

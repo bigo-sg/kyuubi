@@ -142,14 +142,14 @@ private[kyuubi] class SessionManager private (
         while (!shutdown) {
           val current: Long = System.currentTimeMillis
           handleToSession.values.asScala.foreach { session =>
+            val handle: SessionHandle = session.getSessionHandle
             val sessionUser = session.getUserName
             val noOperationTime = session.getNoOperationTime
             val lastAccessTime = session.getLastAccessTime
-            info(s"""current sessionTimeout $sessionTimeout, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, 
+            info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, 
 User $sessionUser""")
             if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
-              val handle: SessionHandle = session.getSessionHandle
               warn("Session " + handle + " is Timed-out (last access: "
                 + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
               try {
@@ -301,7 +301,7 @@ User $sessionUser""")
     }
     cacheManager.decrease(sessionUser)
     session.close()
-    warn("close one  session for " + sessionUser)
+    warn(s"close one session $sessionHandle for " + sessionUser)
   }
 
   def getOperationMgr: OperationManager = operationManager
