@@ -38,6 +38,7 @@ import yaooqinn.kyuubi.ui.{ KyuubiServerListener, KyuubiServerMonitor }
 import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
 import java.io.File
 import org.apache.spark.sql.SparkSessionExtensions
+import SparkSessionWithUGI._
 
 class SparkSessionWithUGI(
   user:  UserGroupInformation,
@@ -128,19 +129,19 @@ class SparkSessionWithUGI(
     }
   }
 
-  private def getOrCreate(sessionConf: Map[String, String]): Unit = synchronized {
+  private def getOrCreate(sessionConf: Map[String, String]): Unit = SPARK_INSTANTIATION_LOCK.synchronized{
     val totalRounds = math.max(conf.get(BACKEND_SESSION_WAIT_OTHER_TIMES).toInt, 15)
     var checkRound = totalRounds
     val interval = conf.getTimeAsMs(BACKEND_SESSION_WAIT_OTHER_INTERVAL)
     // if user's sc is being constructed by another
-    while (SparkSessionWithUGI.isPartiallyConstructed(userName)) {
-      wait(interval)
+    while (isPartiallyConstructed(userName)) {
       checkRound -= 1
       if (checkRound <= 0) {
         throw new KyuubiSQLException(s"A partially constructed SparkContext for [$userName] " +
           s"has last more than ${totalRounds * interval / 1000} seconds")
       }
       info(s"A partially constructed SparkContext for [$userName], $checkRound times countdown.")
+      SPARK_INSTANTIATION_LOCK.wait(interval)
     }
 
     cache.getAndIncrease(userName) match {
@@ -148,8 +149,8 @@ class SparkSessionWithUGI(
         _sparkSession = ss.newSession()
         configureSparkSession(sessionConf)
       case _ =>
-        SparkSessionWithUGI.setPartiallyConstructed(userName)
-        notifyAll()
+        setPartiallyConstructed(userName)
+        SPARK_INSTANTIATION_LOCK.notifyAll()
         create(sessionConf)
     }
   }
@@ -198,7 +199,7 @@ class SparkSessionWithUGI(
         sparkException.foreach(ke.addSuppressed)
         throw ke
     } finally {
-      SparkSessionWithUGI.setFullyConstructed(userName)
+      setFullyConstructed(userName)
       newContext.join()
     }
 
@@ -238,6 +239,9 @@ class SparkSessionWithUGI(
 }
 
 object SparkSessionWithUGI {
+  
+  val SPARK_INSTANTIATION_LOCK = new Object()
+  
   private val userSparkContextBeingConstruct = new MHSet[String]()
 
   def setPartiallyConstructed(user: String): Unit = {

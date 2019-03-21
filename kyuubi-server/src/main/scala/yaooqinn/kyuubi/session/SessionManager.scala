@@ -52,6 +52,7 @@ private[kyuubi] class SessionManager private (
   private var sessionTimeout: Long = _
   private var checkOperation: Boolean = false
   private var shutdown: Boolean = false
+  private val cleaner = Executors.newScheduledThreadPool(1)
 
   def this() = this(classOf[SessionManager].getSimpleName)
 
@@ -138,16 +139,13 @@ private[kyuubi] class SessionManager private (
     // minimum 3 seconds
     val timeoutChecker = new Runnable() {
       override def run(): Unit = {
-        sleepInterval(interval)
-        while (!shutdown) {
           val current: Long = System.currentTimeMillis
           handleToSession.values.asScala.foreach { session =>
             val handle: SessionHandle = session.getSessionHandle
             val sessionUser = session.getUserName
             val noOperationTime = session.getNoOperationTime
             val lastAccessTime = session.getLastAccessTime
-            info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, 
-User $sessionUser""")
+            info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
             if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
               warn("Session " + handle + " is Timed-out (last access: "
@@ -162,11 +160,10 @@ User $sessionUser""")
               session.closeExpiredOperations
             }
           }
-          sleepInterval(interval)
-        }
       }
     }
-    execPool.execute(timeoutChecker)
+    //execPool.execute(timeoutChecker)
+    cleaner.scheduleWithFixedDelay(timeoutChecker, interval,  interval, TimeUnit.MILLISECONDS)
   }
 
   private def sleepInterval(interval: Long): Unit = {
