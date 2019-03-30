@@ -165,12 +165,12 @@ class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkLis
     val dt_end = new Timestamp(finished_ts).toLocalDateTime
     val dur = java.time.Duration.between(dt_begin, dt_end).getSeconds
     val map = new LinkedHashMap[String, String]
-    map += ("state" -> state.toString)
-    map += ("user" -> user)
-    map += ("begin_time" -> dt_begin.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-    map += ("finished_time" -> dt_end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-    map += ("sql" -> statment)
-    map += ("duration(sec)" -> dur.toString)
+    map += ("job_state" -> state.toString)
+    map += ("user_name" -> user)
+    map += ("start_time" -> dt_begin.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+    map += ("end_time" -> dt_end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+    map += ("query" -> statment)
+    map += ("duration" -> dur.toString)
     mapper.writeValueAsString(map) + "\n"
   }
 }

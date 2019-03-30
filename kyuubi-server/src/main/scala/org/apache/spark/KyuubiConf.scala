@@ -171,7 +171,7 @@ object KyuubiConf {
       .doc("The check interval for session/operation timeout, which can be disabled by setting" +
         " to zero or negative value.")
       .timeConf(TimeUnit.MILLISECONDS)
-      .createWithDefault(TimeUnit.MINUTES.toMillis(10L))
+      .createWithDefault(TimeUnit.MINUTES.toMillis(30L))
 
   val FRONTEND_IDLE_SESSION_CHECK_OPERATION: ConfigEntry[Boolean] =
     KyuubiConfigBuilder("spark.kyuubi.frontend.session.check.operation")

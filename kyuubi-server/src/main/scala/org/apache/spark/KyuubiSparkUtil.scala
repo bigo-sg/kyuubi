@@ -18,7 +18,7 @@
 package org.apache.spark
 
 import java.io.File
-import java.lang.reflect.{InvocationTargetException, UndeclaredThrowableException}
+import java.lang.reflect.{ InvocationTargetException, UndeclaredThrowableException }
 import java.net.URI
 
 import scala.annotation.tailrec
@@ -73,7 +73,7 @@ object KyuubiSparkUtil extends Logging {
   val DRIVER_EXTRA_JAVA_OPTIONS: String = SPARK_PREFIX + DRIVER_PREFIX + "extraJavaOptions"
 
   val GC_INTERVAL: String = SPARK_PREFIX + "cleaner.periodicGC.interval"
-  val GC_INTERVAL_DEFAULT: String = "3min"
+  val GC_INTERVAL_DEFAULT: String = "30min"
 
   val AM_EXTRA_JAVA_OPTIONS: String = AM_PREFIX + "extraJavaOptions"
 
@@ -82,6 +82,9 @@ object KyuubiSparkUtil extends Logging {
 
   val MULTIPLE_CONTEXTS: String = SPARK_PREFIX + DRIVER_PREFIX + "allowMultipleContexts"
   val MULTIPLE_CONTEXTS_DEFAULT = "true"
+
+  val PREFER_DIRECTBUF: String = SPARK_PREFIX + "shuffle." + "io.preferDirectBufs"
+  val PREFER_DIRECTBUF_DEFAULT = "false"
 
   val CATALOG_IMPL: String = SPARK_PREFIX + SQL_PREFIX + "catalogImplementation"
   val CATALOG_IMPL_DEFAULT = "hive"
@@ -134,8 +137,8 @@ object KyuubiSparkUtil extends Logging {
   }
 
   def createTempDir(
-      root: String = System.getProperty("java.io.tmpdir"),
-      namePrefix: String = "spark"): File = {
+    root:       String = System.getProperty("java.io.tmpdir"),
+    namePrefix: String = "spark"): File = {
     Utils.createTempDir(root, namePrefix)
   }
 
@@ -226,10 +229,10 @@ object KyuubiSparkUtil extends Logging {
   def escapeForShell(arg: String): String = {
     val escaped = new StringBuilder("'")
     arg.foreach {
-      case '$' => escaped.append("\\$")
-      case '"' => escaped.append("\\\"")
+      case '$'  => escaped.append("\\$")
+      case '"'  => escaped.append("\\\"")
       case '\'' => escaped.append("'\\''")
-      case c => escaped.append(c)
+      case c    => escaped.append(c)
     }
     escaped.append("'").toString()
   }
@@ -275,7 +278,8 @@ object KyuubiSparkUtil extends Logging {
     // but for the later [[SparkContext]] must be set to client mode
     conf.set(DEPLOY_MODE, DEPLOY_MODE_DEFAULT)
     // The delegation token store implementation. Set to MemoryTokenStore always.
-    conf.set("spark.hadoop.hive.cluster.delegation.token.store.class",
+    conf.set(
+      "spark.hadoop.hive.cluster.delegation.token.store.class",
       "org.apache.hadoop.hive.thrift.MemoryTokenStore")
 
     conf.getOption(METASTORE_JARS) match {
@@ -287,6 +291,7 @@ object KyuubiSparkUtil extends Logging {
     // Set missing Kyuubi configs to SparkConf
     KyuubiConf.getAllDefaults.foreach(kv => conf.setIfMissing(kv._1, kv._2))
 
+    conf.setIfMissing(PREFER_DIRECTBUF, PREFER_DIRECTBUF_DEFAULT)
     conf.setIfMissing(SPARK_LOCAL_DIR, conf.get(KyuubiConf.BACKEND_SESSION_LOCAL_DIR.key))
     conf.setIfMissing(GC_INTERVAL, GC_INTERVAL_DEFAULT)
 

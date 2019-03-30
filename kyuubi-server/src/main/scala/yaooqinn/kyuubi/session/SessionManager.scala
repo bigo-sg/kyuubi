@@ -35,6 +35,7 @@ import yaooqinn.kyuubi.service.{ CompositeService, ServiceException }
 import yaooqinn.kyuubi.spark.SparkSessionCacheManager
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.NamedThreadFactory
+import com.google.common.util.concurrent.ThreadFactoryBuilder
 
 /**
  * A SessionManager for managing [[KyuubiSession]]s
@@ -52,7 +53,8 @@ private[kyuubi] class SessionManager private (
   private var sessionTimeout: Long = _
   private var checkOperation: Boolean = false
   private var shutdown: Boolean = false
-  private val cleaner = Executors.newScheduledThreadPool(1)
+  private val cleaner = Executors.newSingleThreadScheduledExecutor(
+    new ThreadFactoryBuilder().setDaemon(true).setNameFormat(getClass.getSimpleName + "-%d").build())
 
   def this() = this(classOf[SessionManager].getSimpleName)
 
@@ -139,7 +141,8 @@ private[kyuubi] class SessionManager private (
     // minimum 3 seconds
     val timeoutChecker = new Runnable() {
       override def run(): Unit = {
-          val current: Long = System.currentTimeMillis
+        val current: Long = System.currentTimeMillis
+        try {
           handleToSession.values.asScala.foreach { session =>
             val handle: SessionHandle = session.getSessionHandle
             val sessionUser = session.getUserName
@@ -150,20 +153,18 @@ private[kyuubi] class SessionManager private (
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
               warn("Session " + handle + " is Timed-out (last access: "
                 + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
-              try {
-                closeSession(handle)
-              } catch {
-                case e: KyuubiSQLException =>
-                  warn("Exception is thrown closing idle session " + handle, e)
-              }
+              closeSession(handle)
             } else {
               session.closeExpiredOperations
             }
           }
+        } catch {
+          case e: Throwable =>
+            warn("Exception is thrown in SessionManger cleaner ", e)
+        }
       }
     }
-    //execPool.execute(timeoutChecker)
-    cleaner.scheduleWithFixedDelay(timeoutChecker, interval,  interval, TimeUnit.MILLISECONDS)
+    cleaner.scheduleWithFixedDelay(timeoutChecker, interval, interval, TimeUnit.MILLISECONDS)
   }
 
   private def sleepInterval(interval: Long): Unit = {

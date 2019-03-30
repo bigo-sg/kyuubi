@@ -336,7 +336,6 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     try {
       statementId = UUID.randomUUID().toString
       info(s"Running query '$statement' with $statementId")
-      val inputTables = new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
       setState(RUNNING)
 
       val classLoader = SparkSQLUtils.getUserJarClassLoader(sparkSession)
@@ -352,6 +351,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       }
       sparkSession.sparkContext.setJobGroup(statementId, statement)
       KyuubiSparkUtil.setActiveSparkContext(sparkSession.sparkContext)
+      val inputTables = new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
 
       val parsedPlan = SparkSQLUtils.parsePlan(sparkSession, statement)
       parsedPlan match {
@@ -413,25 +413,28 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         }
       case e: ParseException =>
         if (!isClosedOrCanceled) {
-          onStatementError(
-            statementId, e.withCommand(statement).getMessage, KyuubiSparkUtil.exceptionString(e))
+          val err = KyuubiSparkUtil.exceptionString(e)
+          onStatementError(statementId, e.withCommand(statement).getMessage, err)
           throw new KyuubiSQLException(
-            e.withCommand(statement).getMessage, "ParseException", 2000, e)
+            e.withCommand(statement).getMessage + err, "ParseException", 2000, e)
         }
       case e: AnalysisException =>
         if (!isClosedOrCanceled) {
-          onStatementError(statementId, e.getMessage, KyuubiSparkUtil.exceptionString(e))
-          throw new KyuubiSQLException(e.getMessage, "AnalysisException", 2001, e)
+          val err = KyuubiSparkUtil.exceptionString(e)
+          onStatementError(statementId, e.getMessage, err)
+          throw new KyuubiSQLException(err, "AnalysisException", 2001, e)
         }
       case e: HiveAccessControlException =>
         if (!isClosedOrCanceled) {
-          onStatementError(statementId, e.getMessage, KyuubiSparkUtil.exceptionString(e))
-          throw new KyuubiSQLException(e.getMessage, "HiveAccessControlException", 3000, e)
+          val err = KyuubiSparkUtil.exceptionString(e)
+          onStatementError(statementId, e.getMessage, err)
+          throw new KyuubiSQLException(err, "HiveAccessControlException", 3000, e)
         }
       case e: Throwable =>
         if (!isClosedOrCanceled) {
-          onStatementError(statementId, e.getMessage, KyuubiSparkUtil.exceptionString(e))
-          throw new KyuubiSQLException(e.toString, "<unknown>", 10000, e)
+          val err = KyuubiSparkUtil.exceptionString(e)
+          onStatementError(statementId, e.getMessage, err)
+          throw new KyuubiSQLException(err, "<unknown>", 10000, e)
         }
     } finally {
       if (statementId != null) {
