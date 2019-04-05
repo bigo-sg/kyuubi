@@ -142,12 +142,12 @@ private[kyuubi] class SessionManager private (
     val timeoutChecker = new Runnable() {
       override def run(): Unit = {
         val current: Long = System.currentTimeMillis
-        try {
-          handleToSession.values.asScala.foreach { session =>
+        handleToSession.values.asScala.foreach { session =>
             val handle: SessionHandle = session.getSessionHandle
             val sessionUser = session.getUserName
             val noOperationTime = session.getNoOperationTime
             val lastAccessTime = session.getLastAccessTime
+            try {
             info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
             if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
@@ -157,10 +157,10 @@ private[kyuubi] class SessionManager private (
             } else {
               session.closeExpiredOperations
             }
+          } catch {
+            case e: Throwable =>
+              warn(s"Exception is thrown in SessionManger cleaner for $handle ", e)
           }
-        } catch {
-          case e: Throwable =>
-            warn("Exception is thrown in SessionManger cleaner ", e)
         }
       }
     }
