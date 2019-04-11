@@ -134,4 +134,22 @@ class SparkSessionCacheManager private (name: String) extends AbstractService(na
     userToSession.clear()
     super.stop()
   }
+
+  def getUserActiveSessionNum(name: String) = {
+    if (userToSession.containsKey(name)) {
+      try {
+        val times = userToSession.get(name)._2
+        info(s"$name times " + times.get)
+        times.get
+      } catch {
+        case e: Exception =>
+          error(s"can't get user $name session", e)
+          -1
+      }
+    } else {
+      info("useToSession not found " + name)
+      -1
+    }
+  }
+
 }

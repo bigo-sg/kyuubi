@@ -292,13 +292,24 @@ private[kyuubi] class KyuubiSession(
       closeTimedOutOperations(operationManager.removeExpiredOperations(opHandleSet.toSeq))
       var allOver = true
       for (op <- opHandleSet.toSeq) {
-        val state = operationManager.getOperation(op).getStatus.getState
-        if (!state.isTerminal) {
-          allOver = false
+        try {
+          val state = operationManager.getOperation(op).getStatus.getState
+          if (!state.isTerminal) {
+            allOver = false
+          }
+        } catch {
+          case e: Throwable =>
+            val err = KyuubiSparkUtil.exceptionString(e)
+            warn(err, e)
+            opHandleSet.remove(op)
         }
       }
       if (allOver && lastIdleTime == 0) {
         warn(s"operation all over for $sessionHandle of $username")
+        lastIdleTime = System.currentTimeMillis()
+      }
+    } else {
+      if (lastIdleTime == 0) {
         lastIdleTime = System.currentTimeMillis()
       }
     }

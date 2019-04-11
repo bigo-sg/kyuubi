@@ -36,6 +36,7 @@ import yaooqinn.kyuubi.spark.SparkSessionCacheManager
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.NamedThreadFactory
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import org.apache.spark.KyuubiSparkUtil
 
 /**
  * A SessionManager for managing [[KyuubiSession]]s
@@ -143,11 +144,11 @@ private[kyuubi] class SessionManager private (
       override def run(): Unit = {
         val current: Long = System.currentTimeMillis
         handleToSession.values.asScala.foreach { session =>
-            val handle: SessionHandle = session.getSessionHandle
-            val sessionUser = session.getUserName
-            val noOperationTime = session.getNoOperationTime
-            val lastAccessTime = session.getLastAccessTime
-            try {
+          val handle: SessionHandle = session.getSessionHandle
+          val sessionUser = session.getUserName
+          val noOperationTime = session.getNoOperationTime
+          val lastAccessTime = session.getLastAccessTime
+          try {
             info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
             if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
               && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
@@ -159,7 +160,8 @@ private[kyuubi] class SessionManager private (
             }
           } catch {
             case e: Throwable =>
-              warn(s"Exception is thrown in SessionManger cleaner for $handle ", e)
+              val err = KyuubiSparkUtil.exceptionString(e)
+              warn(s"Exception is thrown in SessionManger cleaner for $handle\n$err" , e)
           }
         }
       }
@@ -249,6 +251,11 @@ private[kyuubi] class SessionManager private (
     ipAddress:         String,
     sessionConf:       Map[String, String],
     withImpersonation: Boolean): SessionHandle = {
+
+    if (!checkActiveUserSessionNum(username)) {
+      throw new KyuubiSQLException(s"$username active session reach limit 2, can not create new one")
+    }
+
     val kyuubiSession = new KyuubiSession(
       protocol,
       username,
@@ -309,4 +316,15 @@ private[kyuubi] class SessionManager private (
   def getOpenSessionCount: Int = handleToSession.size
 
   def submitBackgroundOperation(r: Runnable): Future[_] = execPool.submit(r)
+
+  def checkActiveUserSessionNum(username: String): Boolean = {
+    info("check action session num for " + username)
+    val times = cacheManager.getUserActiveSessionNum(username)
+    info(s"$username current action session num " + times)
+    if (times > 1) {
+      return false
+    }
+    true
+  }
+
 }

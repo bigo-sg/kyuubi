@@ -24,18 +24,18 @@ import scala.collection.JavaConverters._
 
 import org.apache.hadoop.hive.ql.session.OperationLog
 import org.apache.log4j.Logger
-import org.apache.spark.{KyuubiSparkUtil, SparkConf}
+import org.apache.spark.{ KyuubiSparkUtil, SparkConf }
 import org.apache.spark.KyuubiConf._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
 
-import yaooqinn.kyuubi.{KyuubiSQLException, Logging}
+import yaooqinn.kyuubi.{ KyuubiSQLException, Logging }
 import yaooqinn.kyuubi.cli.FetchOrientation
-import yaooqinn.kyuubi.schema.{RowSet, RowSetBuilder}
+import yaooqinn.kyuubi.schema.{ RowSet, RowSetBuilder }
 import yaooqinn.kyuubi.service.AbstractService
 import yaooqinn.kyuubi.session.KyuubiSession
 
-private[kyuubi] class OperationManager private(name: String)
+private[kyuubi] class OperationManager private (name: String)
   extends AbstractService(name) with Logging {
 
   def this() = this(classOf[OperationManager].getSimpleName)
@@ -84,8 +84,8 @@ private[kyuubi] class OperationManager private(name: String)
   }
 
   def newExecuteStatementOperation(
-      parentSession: KyuubiSession,
-      statement: String): KyuubiOperation = synchronized {
+    parentSession: KyuubiSession,
+    statement:     String): KyuubiOperation = synchronized {
     val operation = new KyuubiOperation(parentSession, statement)
     addOperation(operation)
     operation
@@ -110,8 +110,8 @@ private[kyuubi] class OperationManager private(name: String)
     handleToOperation.remove(opHandle)
 
   private def removeTimedOutOperation(
-      operationHandle: OperationHandle): Option[KyuubiOperation] = synchronized {
-    Some(handleToOperation.get(operationHandle))
+    operationHandle: OperationHandle): Option[KyuubiOperation] = synchronized {
+ Option[KyuubiOperation](handleToOperation.get(operationHandle))
       .filter(_.isTimedOut)
       .map(_ => handleToOperation.remove(operationHandle))
   }
@@ -126,8 +126,7 @@ private[kyuubi] class OperationManager private(name: String)
       || (opState eq UNKNOWN)) {
       // Cancel should be a no-op in either cases
       debug(opHandle + ": Operation is already aborted in state - " + opState)
-    }
-    else {
+    } else {
       debug(opHandle + ": Attempting to cancel from state - " + opState)
       operation.cancel()
     }
@@ -142,16 +141,16 @@ private[kyuubi] class OperationManager private(name: String)
 
   @throws[KyuubiSQLException]
   def getOperationNextRowSet(
-      opHandle: OperationHandle,
-      orientation: FetchOrientation,
-      maxRows: Long): RowSet =
+    opHandle:    OperationHandle,
+    orientation: FetchOrientation,
+    maxRows:     Long): RowSet =
     getOperation(opHandle).getNextRowSet(orientation, maxRows)
 
   @throws[KyuubiSQLException]
   def getOperationLogRowSet(
-      opHandle: OperationHandle,
-      orientation: FetchOrientation,
-      maxRows: Long): RowSet = {
+    opHandle:    OperationHandle,
+    orientation: FetchOrientation,
+    maxRows:     Long): RowSet = {
     // get the OperationLog object from the operation
     val opLog: OperationLog = getOperation(opHandle).getOperationLog
     if (opLog == null) {
