@@ -148,8 +148,8 @@ object SparkEnv extends Logging {
   def set(e: SparkEnv) {
     info("before env size " + env.size())
     if (e == null) {
-      info(s"Kyuubi: Removing SparkEnv for $user")
-      env.remove(user)
+      //info(s"Kyuubi: Removing SparkEnv for $user")
+      //env.remove(user)
     } else {
       info(s"Kyuubi: Registering SparkEnv for $user")
       env.put(user, e)
@@ -157,9 +157,9 @@ object SparkEnv extends Logging {
     info("after env size " + env.size())
   }
 
-  def remove(user: String) {
-    info(s"remove user $user from env")
-    env.remove(user)
+  def remove(username: String) {
+    info(s"remove user $username from env")
+    env.remove(username)
   }
 
   /**

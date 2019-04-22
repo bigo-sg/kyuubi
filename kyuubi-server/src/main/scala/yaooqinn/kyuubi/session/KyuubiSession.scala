@@ -110,6 +110,24 @@ private[kyuubi] class KyuubiSession(
   @throws[KyuubiSQLException]
   private def executeStatementInternal(statement: String): OperationHandle = {
     acquire(true)
+    var allOver = true
+    for (op <- opHandleSet.toSeq) {
+      try {
+        val state = operationManager.getOperation(op).getStatus.getState
+        if (!state.isTerminal) {
+          allOver = false
+          warn(s"found running operation for $username's " + sessionHandle)
+        }
+      } catch {
+        case e: Throwable =>
+          val err = KyuubiSparkUtil.exceptionString(e)
+          warn(err, e)
+      }
+    }
+    if (allOver == false) {
+      throw new KyuubiSQLException(s"current session $sessionHandle for $username has running operation")
+    }
+
     val operation =
       operationManager.newExecuteStatementOperation(this, statement)
     val opHandle = operation.getHandle
