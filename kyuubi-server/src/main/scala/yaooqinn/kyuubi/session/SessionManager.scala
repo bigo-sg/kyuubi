@@ -318,7 +318,7 @@ private[kyuubi] class SessionManager private (
   def submitBackgroundOperation(r: Runnable): Future[_] = execPool.submit(r)
 
   def checkActiveUserSessionNum(username: String): Boolean = {
-    info("check action session num for " + username)
+    info("check active session num for " + username)
     val times = cacheManager.getUserActiveSessionNum(username)
     info(s"$username current action session num " + times)
     if (times > 1) {

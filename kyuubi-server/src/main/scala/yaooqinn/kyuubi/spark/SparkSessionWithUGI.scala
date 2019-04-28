@@ -39,6 +39,8 @@ import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
 import java.io.File
 import org.apache.spark.sql.SparkSessionExtensions
 import SparkSessionWithUGI._
+import java.util.concurrent.FutureTask
+import java.util.concurrent.Callable
 
 class SparkSessionWithUGI(
   user:  UserGroupInformation,
@@ -51,7 +53,7 @@ class SparkSessionWithUGI(
   private var sparkException: Option[Throwable] = None
   private var userAuditDir: File = _
 
-  private lazy val newContext: Thread = {
+  /*  private lazy val newContext: Thread = {
     val threadName = "SparkContext-Starter-" + userName
     new Thread(threadName) {
       override def run(): Unit = {
@@ -66,7 +68,7 @@ class SparkSessionWithUGI(
         }
       }
     }
-  }
+  }*/
 
   /**
    * Invoke SparkContext.stop() if not succeed initializing it
@@ -129,7 +131,7 @@ class SparkSessionWithUGI(
     }
   }
 
-  private def getOrCreate(sessionConf: Map[String, String]): Unit = SPARK_INSTANTIATION_LOCK.synchronized{
+  private def getOrCreate(sessionConf: Map[String, String]): Unit = SPARK_INSTANTIATION_LOCK.synchronized {
     val totalRounds = math.max(conf.get(BACKEND_SESSION_WAIT_OTHER_TIMES).toInt, 15)
     var checkRound = totalRounds
     val interval = conf.getTimeAsMs(BACKEND_SESSION_WAIT_OTHER_INTERVAL)
@@ -165,16 +167,31 @@ class SparkSessionWithUGI(
     val totalWaitTime: Long = conf.getTimeAsSeconds(BACKEND_SESSION_INIT_TIMEOUT)
     try {
       KyuubiHadoopUtil.doAs(user) {
-        newContext.start()
-        val context =
-          Await.result(promisedSparkContext.future, Duration(totalWaitTime, TimeUnit.SECONDS))
+        //newContext.start()
+        //val context =Await.result(promisedSparkContext.future, Duration(totalWaitTime, TimeUnit.SECONDS))
+        val future_context = new FutureTask(new Callable[Boolean]() {
+          override def call() = {
+            try {
+              promisedSparkContext.trySuccess {
+                new SparkContext(conf)
+              }
+            } catch {
+              case e: Exception =>
+                sparkException = Some(e)
+                throw e
+            }
+          }
+        })
+        new Thread(future_context, "SparkContext-Starter-" + userName).start
+        future_context.get(totalWaitTime, TimeUnit.SECONDS)
+        val context = Await.result(promisedSparkContext.future, Duration(1, TimeUnit.SECONDS))
         _sparkSession = ReflectUtils.newInstance(
           classOf[SparkSession].getName,
           Seq(classOf[SparkContext]),
           Seq(context)).asInstanceOf[SparkSession]
         val extensionConfOption = conf.getOption("spark.sql.extensions")
         if (extensionConfOption.isDefined) {
-          val ext = new SparkSessionExtensions	
+          val ext = new SparkSessionExtensions
           info("reflect extension " + extensionConfOption.get)
           val extensionConfClassName = extensionConfOption.get
           val extensionConfClass = ReflectUtils.findClass(extensionConfClassName)
@@ -184,8 +201,8 @@ class SparkSessionWithUGI(
           ReflectUtils.setFieldValue(_sparkSession, "extensions", ext)
           info("extension finished")
         }
+        cache.set(userName, _sparkSession)
       }
-      cache.set(userName, _sparkSession)
     } catch {
       case e: Exception =>
         if (conf.getOption("spark.master").contains("yarn")) {
@@ -194,13 +211,14 @@ class SparkSessionWithUGI(
           }
         }
         stopContext()
+
         val ke = new KyuubiSQLException(
           s"Get SparkSession for [$userName] failed", "08S01", 1001, findCause(e))
         sparkException.foreach(ke.addSuppressed)
         throw ke
     } finally {
       setFullyConstructed(userName)
-      newContext.join()
+      //newContext.join()
     }
 
     KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf, userAuditDir))
@@ -239,9 +257,9 @@ class SparkSessionWithUGI(
 }
 
 object SparkSessionWithUGI {
-  
+
   val SPARK_INSTANTIATION_LOCK = new Object()
-  
+
   private val userSparkContextBeingConstruct = new MHSet[String]()
 
   def setPartiallyConstructed(user: String): Unit = {

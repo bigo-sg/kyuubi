@@ -73,7 +73,7 @@ object KyuubiSparkUtil extends Logging {
   val DRIVER_EXTRA_JAVA_OPTIONS: String = SPARK_PREFIX + DRIVER_PREFIX + "extraJavaOptions"
 
   val GC_INTERVAL: String = SPARK_PREFIX + "cleaner.periodicGC.interval"
-  val GC_INTERVAL_DEFAULT: String = "30min"
+  val GC_INTERVAL_DEFAULT: String = "60min"
 
   val AM_EXTRA_JAVA_OPTIONS: String = AM_PREFIX + "extraJavaOptions"
 
