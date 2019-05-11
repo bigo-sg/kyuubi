@@ -221,6 +221,12 @@
                         <arg>-Xlint:all,-serial,-path</arg>
                     </compilerArgs>
                 </configuration>
+		<executions>
+		<execution>
+		<id>default-compile</id>
+		<phase>none</phase>
+		</execution>
+		</executions>
             </plugin>
 
             <plugin>

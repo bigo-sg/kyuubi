@@ -111,7 +111,7 @@ private[kyuubi] class OperationManager private (name: String)
 
   private def removeTimedOutOperation(
     operationHandle: OperationHandle): Option[KyuubiOperation] = synchronized {
- Option[KyuubiOperation](handleToOperation.get(operationHandle))
+    Option[KyuubiOperation](handleToOperation.get(operationHandle))
       .filter(_.isTimedOut)
       .map(_ => handleToOperation.remove(operationHandle))
   }
@@ -135,8 +135,9 @@ private[kyuubi] class OperationManager private (name: String)
   @throws[KyuubiSQLException]
   def closeOperation(opHandle: OperationHandle): Unit = {
     val operation = removeOperation(opHandle)
-    if (operation == null) throw new KyuubiSQLException("Operation does not exist!")
-    operation.close()
+    if (operation == null) {
+      warn("Operation does not exist for " + opHandle)
+    } else operation.close()
   }
 
   @throws[KyuubiSQLException]

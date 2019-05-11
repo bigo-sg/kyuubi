@@ -33,7 +33,7 @@ object LoadAuditLog {
     println(s"total query $buffer.size")
     Files.write(Paths.get(audit_merge), buffer, StandardCharsets.UTF_8)
     val local_audit = "file://" + audit_merge
-    spark.sql(s"load data local inpath '$local_audit' overwrite into table bigolive.sparksql_job_audit partition(day='$date')")
+    spark.sql(s"load data local inpath '$local_audit' into table bigolive.sparksql_job_audit partition(day='$date')")
     spark.stop
     System.exit(0)
   }

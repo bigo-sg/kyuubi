@@ -335,7 +335,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
   private def execute(): Unit = {
     try {
       statementId = UUID.randomUUID().toString
-      info(s"Running query '$statement' with $statementId")
+      info(s"Running query '$statement' with $statementId for " + session.getUserName)
       setState(RUNNING)
 
       val classLoader = SparkSQLUtils.getUserJarClassLoader(sparkSession)
@@ -352,6 +352,10 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       sparkSession.sparkContext.setJobGroup(statementId, statement)
       KyuubiSparkUtil.setActiveSparkContext(sparkSession.sparkContext)
       val inputTables = new SemanticAnalyzerHiveDriverRunHook().processSQL(statement)
+      if (SemanticAnalyzerHiveDriverRunHook.hasPercentile(statement)) {
+        info("found percentile function, close adaptive")
+        sparkSession.conf.set("spark.sql.adaptive.enabled", false)
+      }
 
       val parsedPlan = SparkSQLUtils.parsePlan(sparkSession, statement)
       parsedPlan match {

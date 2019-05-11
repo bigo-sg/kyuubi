@@ -251,9 +251,12 @@ private[kyuubi] class KyuubiSession(
   def closeOperation(opHandle: OperationHandle): Unit = {
     acquire(true)
     try {
-      operationManager.closeOperation(opHandle)
-      opHandleSet.remove(opHandle)
       info("close operation " + opHandle + " for user " + username)
+      opHandleSet.remove(opHandle)
+      operationManager.closeOperation(opHandle)
+    } catch {
+      case e: Exception =>
+        warn("Exception is thrown closing operation " + opHandle, e)
     } finally {
       release(true)
     }

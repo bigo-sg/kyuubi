@@ -149,19 +149,24 @@ private[kyuubi] class SessionManager private (
           val noOperationTime = session.getNoOperationTime
           val lastAccessTime = session.getLastAccessTime
           try {
-            info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
-            if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
-              && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
-              warn("Session " + handle + " is Timed-out (last access: "
-                + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
+            if (cacheManager.getUserActiveSessionNum(sessionUser) < 0) {
+              warn(s"session user $sessionUser can not found in cache manager, remove the session $handle")
               closeSession(handle)
             } else {
-              session.closeExpiredOperations
+              info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
+              if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
+                && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
+                warn("Session " + handle + " is Timed-out (last access: "
+                  + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
+                closeSession(handle)
+              } else {
+                session.closeExpiredOperations
+              }
             }
           } catch {
             case e: Throwable =>
               val err = KyuubiSparkUtil.exceptionString(e)
-              warn(s"Exception is thrown in SessionManger cleaner for $handle\n$err" , e)
+              warn(s"Exception is thrown in SessionManger cleaner for $handle\n$err", e)
           }
         }
       }
