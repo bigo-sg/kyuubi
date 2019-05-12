@@ -41,6 +41,7 @@ import org.apache.spark.sql.SparkSessionExtensions
 import SparkSessionWithUGI._
 import java.util.concurrent.FutureTask
 import java.util.concurrent.Callable
+import yaooqinn.kyuubi.operation.PartitionChecker
 
 class SparkSessionWithUGI(
   user:  UserGroupInformation,
@@ -219,6 +220,11 @@ class SparkSessionWithUGI(
     } finally {
       setFullyConstructed(userName)
       //newContext.join()
+    }
+
+    if (!PartitionChecker.isInited) {
+      PartitionChecker.initContext(KyuubiSparkUtil.newConfiguration(_sparkSession.sparkContext.getConf))
+      info("PartitionChecker init finished")
     }
 
     KyuubiServerMonitor.setListener(userName, new KyuubiServerListener(conf, userAuditDir))

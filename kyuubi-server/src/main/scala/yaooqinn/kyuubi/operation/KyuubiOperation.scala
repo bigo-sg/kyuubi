@@ -357,6 +357,9 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         sparkSession.conf.set("spark.sql.adaptive.enabled", false)
       }
 
+      PartitionChecker.setSessionState
+      PartitionChecker.check(statement)
+
       val parsedPlan = SparkSQLUtils.parsePlan(sparkSession, statement)
       parsedPlan match {
         case c if c.nodeName == "CreateFunctionCommand" =>
@@ -381,7 +384,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
       }
       debug(result.queryExecution.toString())
-      if (inputTables != null) {
+/*      if (inputTables != null) {
         info("table num " + inputTables.size)
         val physicalPlanInfo = result.queryExecution.simpleString
         val validPart = SqlChecker.checkPartitionExceed(inputTables.asScala, conf, physicalPlanInfo)
@@ -389,7 +392,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
           val num = SqlChecker.getPartNum(physicalPlanInfo)
           throw new KyuubiSQLException("found partition " + num.get + " exceed upper limit " + SqlChecker.getPartLimit(conf))
         }
-      }
+      }*/
       iter = if (incrementalCollect) {
         info("Executing query in incremental collection mode")
         result.toLocalIterator().asScala
