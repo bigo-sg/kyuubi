@@ -358,7 +358,14 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       }
 
       PartitionChecker.setSessionState
-      PartitionChecker.check(statement)
+      PartitionChecker.setSessionCurTime
+      try {
+        PartitionChecker.check(statement)
+      } catch {
+        case e: NoSuchMethodError =>
+          val err = KyuubiSparkUtil.exceptionString(e)
+          warn(err)
+      }
 
       val parsedPlan = SparkSQLUtils.parsePlan(sparkSession, statement)
       parsedPlan match {
@@ -384,7 +391,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
       }
       debug(result.queryExecution.toString())
-/*      if (inputTables != null) {
+      /*      if (inputTables != null) {
         info("table num " + inputTables.size)
         val physicalPlanInfo = result.queryExecution.simpleString
         val validPart = SqlChecker.checkPartitionExceed(inputTables.asScala, conf, physicalPlanInfo)

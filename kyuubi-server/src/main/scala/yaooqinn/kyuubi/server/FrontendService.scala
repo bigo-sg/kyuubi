@@ -587,6 +587,7 @@ private[kyuubi] class FrontendService private(name: String, beService: BackendSe
         TimeUnit.SECONDS,
         new SynchronousQueue[Runnable],
         new NamedThreadFactory(threadPoolName))
+      executorService.allowCoreThreadTimeOut(true)
 
       // Thrift configs
       authFactory = new KyuubiAuthFactory(conf)

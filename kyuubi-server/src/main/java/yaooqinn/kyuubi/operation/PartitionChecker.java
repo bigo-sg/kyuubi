@@ -1,6 +1,7 @@
 package yaooqinn.kyuubi.operation;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,8 +12,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.Context;
+import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.hooks.ReadEntity;
 import org.apache.hadoop.hive.ql.lockmgr.LockException;
 import org.apache.hadoop.hive.ql.metadata.Partition;
@@ -20,11 +25,8 @@ import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
-import org.apache.hadoop.hive.ql.parse.ParseDriver;
-import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import org.apache.hadoop.hive.ql.parse.SemanticAnalyzerFactory;
-import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.session.SessionState;
 
 import yaooqinn.kyuubi.KyuubiSQLException;
@@ -54,27 +56,38 @@ public class PartitionChecker {
 		return inited;
 	}
 
-	public static void initContext(Configuration conf) throws IOException, LockException {
+	public static void initContext(Configuration conf)
+			throws IOException, LockException, ClassNotFoundException, SQLException {
 		hiveconf = new HiveConf();
 		hiveconf.addResource(conf);
+		hiveconf.set("hive.exec.dynamic.partition.mode", "nonstrict");
 		ss = SessionState.start(hiveconf);
 		ss.initTxnMgr(hiveconf);
 		ctx = new Context(hiveconf);
 		postConfigSet(conf);
 		inited = true;
+		Path sessionPath = SessionState.getHDFSSessionPath(conf);
+		FileSystem fs = sessionPath.getFileSystem(conf);
+		fs.setPermission(sessionPath, new FsPermission("777"));
 	}
 
 	public static void setSessionState() {
 		SessionState.setCurrentSessionState(ss);
 	}
 
+	public static void setSessionCurTime() {
+		ss.setupQueryCurrentTimestamp();
+	}
+
 	public static void check(String sql) throws Exception {
-		ParseDriver pd = new ParseDriver();
-		ASTNode tree = pd.parse(sql, ctx);
-		tree = ParseUtils.findRootNonNullToken(tree);
+		if (sql.startsWith("set ")) {
+			return;
+		}
+		ASTNode tree = ParseUtils.parse(sql, ctx);
+		// tree = ParseUtils.findRootNonNullToken(tree);
 		checkCreateTable(sql, tree);
 
-		BaseSemanticAnalyzer sem = SemanticAnalyzerFactory.get(hiveconf, tree);
+		BaseSemanticAnalyzer sem = SemanticAnalyzerFactory.get(new QueryState(hiveconf), tree);
 		sem.analyze(tree, ctx);
 		sem.validate();
 		Set<ReadEntity> readEntities = sem.getInputs();

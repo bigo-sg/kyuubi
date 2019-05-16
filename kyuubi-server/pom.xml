@@ -31,6 +31,12 @@
 
     <dependencies>
 
+       <dependency>
+    		<groupId>org.apache.hive</groupId>
+    		<artifactId>hive-exec</artifactId>
+    		<version>2.3.4</version>
+       </dependency>
+
         <dependency>
             <groupId>${spark.group}</groupId>
             <artifactId>spark-yarn_${scala.binary.version}</artifactId>
@@ -135,7 +141,7 @@
            <version>1.4</version>
       </dependency>
 
-    </dependencies>
+</dependencies>
 
     <build>
         <outputDirectory>target/scala-${scala.binary.version}/classes</outputDirectory>
