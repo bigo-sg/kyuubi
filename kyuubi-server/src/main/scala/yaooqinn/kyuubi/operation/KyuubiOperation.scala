@@ -357,14 +357,16 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         sparkSession.conf.set("spark.sql.adaptive.enabled", false)
       }
 
-      PartitionChecker.setSessionState
-      PartitionChecker.setSessionCurTime
-      try {
-        PartitionChecker.check(statement)
-      } catch {
-        case e: NoSuchMethodError =>
-          val err = KyuubiSparkUtil.exceptionString(e)
-          warn(err)
+      if (conf.get("hive.preparse.enabled", "true").toBoolean) {
+        PartitionChecker.setSessionState
+        PartitionChecker.setSessionCurTime
+        try {
+          PartitionChecker.check(statement)
+        } catch {
+          case e: NoSuchMethodError =>
+            val err = KyuubiSparkUtil.exceptionString(e)
+            warn(err)
+        }
       }
 
       val parsedPlan = SparkSQLUtils.parsePlan(sparkSession, statement)

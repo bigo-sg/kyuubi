@@ -27,7 +27,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SemanticAnalyzerHiveDriverRunHook implements HiveDriverRunHook {
-	private static final SessionState.LogHelper console = SessionState.getConsole();
 	private static String[] PARTITION_KEYS_RESTRICT = { "day" };
 	private static Map<String, List<String>> tablePartition = new ConcurrentHashMap<>();
 	private static String hintContent = "示例如下：" + "(1)left join类型，外层的on条件只下推到内层的右表，外层的where条件只下推到内层的左表。"
