@@ -357,7 +357,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         sparkSession.conf.set("spark.sql.adaptive.enabled", false)
       }
 
-      if (conf.get("hive.preparse.enabled", "true").toBoolean) {
+      if (conf.get("spark.hive.preparse.enabled", "true").toBoolean) {
         PartitionChecker.setSessionState
         PartitionChecker.setSessionCurTime
         try {
