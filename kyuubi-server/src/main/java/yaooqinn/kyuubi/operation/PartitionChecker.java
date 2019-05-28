@@ -80,7 +80,7 @@ public class PartitionChecker {
 	}
 
 	public static void check(String sql) throws Exception {
-		if (sql.startsWith("set ")) {
+		if (sql.toLowerCase().startsWith("set ")) {
 			return;
 		}
 		ASTNode tree = ParseUtils.parse(sql, ctx);

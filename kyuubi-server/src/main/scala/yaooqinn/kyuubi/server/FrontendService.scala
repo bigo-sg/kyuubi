@@ -42,6 +42,7 @@ import yaooqinn.kyuubi.session.SessionHandle
 import yaooqinn.kyuubi.utils.NamedThreadFactory
 import org.apache.spark.sql.SparkSession
 import yaooqinn.kyuubi.utils.{ KyuubiHadoopUtil, ReflectUtils }
+import java.util.HashMap
 
 /**
  * [[FrontendService]] keeps compatible with all kinds of Hive JDBC/Thrift Client Connections
@@ -247,7 +248,9 @@ private[kyuubi] class FrontendService private(name: String, beService: BackendSe
     try {
       val sessionHandle = getSessionHandle(req, resp)
       resp.setSessionHandle(sessionHandle.toTSessionHandle)
-      // resp.setConfiguration(new Map[String, String]())
+      val confMap = new HashMap[String,String]()
+      confMap.put("hive.server2.thrift.resultset.default.fetch.size", "1000")
+      resp.setConfiguration(confMap)
       resp.setStatus(OK_STATUS)
       val context = currentServerContext.get
         .asInstanceOf[FrontendService#FeServiceServerContext]

@@ -47,6 +47,7 @@ import yaooqinn.kyuubi.session.KyuubiSession
 import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.ReflectUtils
 import java.util.ArrayList
+import org.apache.hadoop.hive.ql.parse.SemanticException
 
 class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging {
 
@@ -200,6 +201,26 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     } finally {
       unregisterOperationLog()
     }
+  }
+
+  def runSync(): Unit = {
+    setState(PENDING)
+    setHasResultSet(true)
+    val t = new Thread(new Runnable() {
+      override def run(): Unit = {
+        session.ugi.doAs(new PrivilegedExceptionAction[Unit]() {
+          override def run(): Unit = {
+            try {
+              execute()
+            } catch {
+              case e: Exception => setOperationException(new KyuubiSQLException(e))
+            }
+          }
+        })
+      }
+    })
+    t.start()
+    t.join()
   }
 
   private[this] def cleanupOperationLog(): Unit = {
@@ -363,9 +384,15 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         try {
           PartitionChecker.check(statement)
         } catch {
-          case e: NoSuchMethodError =>
+          case e @ (_: NoSuchMethodError | _: RuntimeException) =>
+            info("ignore exception " + e)
             val err = KyuubiSparkUtil.exceptionString(e)
             warn(err)
+          case e: SemanticException =>
+            val msg = e.getMessage.toLowerCase()
+            if (!(msg.contains("table not found"))) {
+              throw e
+            }
         }
       }
 
