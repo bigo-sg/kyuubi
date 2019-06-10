@@ -258,7 +258,7 @@ private[kyuubi] class SessionManager private (
     withImpersonation: Boolean): SessionHandle = {
 
     if (!checkActiveUserSessionNum(username)) {
-      throw new KyuubiSQLException(s"$username active session reach limit 2, can not create new one")
+      throw new KyuubiSQLException(s"$username active session reach limit 3, can not create new one")
     }
 
     val kyuubiSession = new KyuubiSession(
@@ -326,7 +326,7 @@ private[kyuubi] class SessionManager private (
     info("check active session num for " + username)
     val times = cacheManager.getUserActiveSessionNum(username)
     info(s"$username current action session num " + times)
-    if (times > 1) {
+    if (times >= 3) {
       return false
     }
     true
