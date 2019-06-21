@@ -390,7 +390,9 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
             warn(err)
           case e: SemanticException =>
             val msg = e.getMessage.toLowerCase()
-            if (!(msg.contains("table not found"))) {
+            if (!(msg.contains("table not found") || msg.contains("operator is only supported")
+              || msg.contains("unable to create")
+              || msg.contains("invalid function"))) {
               throw e
             }
         }
