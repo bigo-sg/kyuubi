@@ -37,6 +37,7 @@ import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.NamedThreadFactory
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import org.apache.spark.KyuubiSparkUtil
+import yaooqinn.kyuubi.spark.SparkSessionWithUGI
 
 /**
  * A SessionManager for managing [[KyuubiSession]]s
@@ -256,6 +257,10 @@ private[kyuubi] class SessionManager private (
     ipAddress:         String,
     sessionConf:       Map[String, String],
     withImpersonation: Boolean): SessionHandle = {
+
+    if (SparkSessionWithUGI.isPartiallyConstructed(username)) {
+      throw new KyuubiSQLException(s"initializing sparkcontext for $username, please wait a moment")
+    }
 
     if (!checkActiveUserSessionNum(username)) {
       throw new KyuubiSQLException(s"$username active session reach limit 3, can not create new one")

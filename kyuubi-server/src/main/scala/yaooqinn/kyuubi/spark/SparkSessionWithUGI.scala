@@ -133,7 +133,7 @@ class SparkSessionWithUGI(
   }
 
   private def getOrCreate(sessionConf: Map[String, String]): Unit = SPARK_INSTANTIATION_LOCK.synchronized {
-    val totalRounds = math.max(conf.get(BACKEND_SESSION_WAIT_OTHER_TIMES).toInt, 15)
+/*    val totalRounds = math.max(conf.get(BACKEND_SESSION_WAIT_OTHER_TIMES).toInt, 15)
     var checkRound = totalRounds
     val interval = conf.getTimeAsMs(BACKEND_SESSION_WAIT_OTHER_INTERVAL)
     // if user's sc is being constructed by another
@@ -145,7 +145,7 @@ class SparkSessionWithUGI(
       }
       info(s"A partially constructed SparkContext for [$userName], $checkRound times countdown.")
       SPARK_INSTANTIATION_LOCK.wait(interval)
-    }
+    }*/
 
     cache.getAndIncrease(userName) match {
       case Some(ss) =>
@@ -203,6 +203,7 @@ class SparkSessionWithUGI(
           info("extension finished")
         }
         cache.set(userName, _sparkSession)
+        info(s"$userName init sparkcontext finished")
       }
     } catch {
       case e: Exception =>

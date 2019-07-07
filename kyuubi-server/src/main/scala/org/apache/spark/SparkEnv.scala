@@ -143,23 +143,24 @@ object SparkEnv extends Logging {
   private[spark] val driverSystemName = "sparkDriver"
   private[spark] val executorSystemName = "sparkExecutor"
 
+  val SPARK_ENV_LOCK = new Object()
+
   private def user = UserGroupInformation.getCurrentUser.getShortUserName
 
-  def set(e: SparkEnv) {
-    info("before env size " + env.size())
+  def set(e: SparkEnv) = SPARK_ENV_LOCK.synchronized {
     if (e == null) {
       //info(s"Kyuubi: Removing SparkEnv for $user")
       //env.remove(user)
     } else {
-      info(s"Kyuubi: Registering SparkEnv for $user")
       env.put(user, e)
+      info(s"Kyuubi: Registering SparkEnv for $user")
     }
     info("after env size " + env.size())
   }
 
-  def remove(username: String) {
-    info(s"remove user $username from env")
+  def remove(username: String) = SPARK_ENV_LOCK.synchronized {
     env.remove(username)
+    info(s"remove user $username from env")
   }
 
   /**

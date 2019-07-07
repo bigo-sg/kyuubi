@@ -85,6 +85,7 @@ class SparkSessionCacheManager private (name: String) extends AbstractService(na
   }
 
   def set(user: String, sparkSession: SparkSession): Unit = {
+    info(s"put new user $user")
     userToSession.put(user, (sparkSession, new AtomicInteger(1)))
   }
 
