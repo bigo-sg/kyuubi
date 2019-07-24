@@ -16,7 +16,6 @@ object LoadAuditLog {
     val audit_merge = operation_dir + "/audit_merge_" + date
     println(audit_merge)
 
-    val spark = SparkSession.builder.enableHiveSupport.appName("merge-load-auditlog").getOrCreate
     val buffer = new ArrayBuffer[String]
     val user_dirs = Files.list(Paths.get(operation_dir)).iterator
     user_dirs.foreach { p =>
@@ -30,11 +29,18 @@ object LoadAuditLog {
         }
       }
     }
-    println(s"total query $buffer.size")
+    if (buffer.size == 0) {
+      println("total query is 0, skip " + date)
+      System.exit(0)
+    }
+
+    println(s"total query " + buffer.size)
     Files.write(Paths.get(audit_merge), buffer, StandardCharsets.UTF_8)
     val local_audit = "file://" + audit_merge
+    val spark = SparkSession.builder.enableHiveSupport.appName("merge-load-auditlog").getOrCreate
     spark.sql(s"load data local inpath '$local_audit' into table bigolive.sparksql_job_audit partition(day='$date')")
     spark.stop
+    Files.delete(Paths.get(audit_merge))
     System.exit(0)
   }
 

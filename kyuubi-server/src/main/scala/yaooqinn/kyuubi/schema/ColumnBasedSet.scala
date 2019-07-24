@@ -23,8 +23,9 @@ import java.util.BitSet
 import scala.collection.JavaConverters._
 
 import org.apache.hive.service.cli.thrift._
-import org.apache.spark.sql.{Row, SparkSQLUtils}
-import org.apache.spark.sql.types.{BinaryType, _}
+import org.apache.spark.sql.{ Row, SparkSQLUtils }
+import org.apache.spark.sql.types.{ BinaryType, _ }
+import java.lang.Double
 
 case class ColumnBasedSet(types: StructType, rows: Seq[Row]) extends RowSet {
   import ColumnBasedSet._
@@ -74,7 +75,7 @@ case class ColumnBasedSet(types: StructType, rows: Seq[Row]) extends RowSet {
         val values = rows.indices.map { i =>
           nulls.set(i, rows(i).isNullAt(ordinal))
           if (rows(i).isNullAt(ordinal)) 0 else rows(i).getFloat(ordinal)
-        }.map(_.toDouble.asInstanceOf[java.lang.Double]).asJava
+        }.map(v => new Double(String.valueOf(v))).asJava
         TColumn.doubleVal(new TDoubleColumn(values, bitSetToBuffer(nulls)))
       case DoubleType =>
         val values = rows.indices.map { i =>

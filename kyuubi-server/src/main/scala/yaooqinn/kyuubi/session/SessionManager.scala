@@ -263,6 +263,9 @@ private[kyuubi] class SessionManager private (
     }
 
     if (!checkActiveUserSessionNum(username)) {
+      if (username == "hadoop") {
+        throw new KyuubiSQLException(s"$username active session reach limit 5, can not create new one")
+      }
       throw new KyuubiSQLException(s"$username active session reach limit 3, can not create new one")
     }
 
@@ -330,8 +333,11 @@ private[kyuubi] class SessionManager private (
   def checkActiveUserSessionNum(username: String): Boolean = {
     info("check active session num for " + username)
     val times = cacheManager.getUserActiveSessionNum(username)
-    info(s"$username current action session num " + times)
-    if (times >= 3) {
+    info(s"$username current active session num " + times)
+    if (times >= 3 && username != "hadoop") {
+      return false
+    }
+    if (times >= 5 && username == "hadoop") {
       return false
     }
     true
