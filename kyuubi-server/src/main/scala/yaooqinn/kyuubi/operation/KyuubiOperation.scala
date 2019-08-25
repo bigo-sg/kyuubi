@@ -48,6 +48,7 @@ import yaooqinn.kyuubi.ui.KyuubiServerMonitor
 import yaooqinn.kyuubi.utils.ReflectUtils
 import java.util.ArrayList
 import org.apache.hadoop.hive.ql.parse.SemanticException
+import org.apache.spark.sql.catalyst.plans.logical.GlobalLimit
 
 class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging {
 
@@ -75,6 +76,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
   private var statementId: String = _
 
   private var resultList: Option[Array[Row]] = _
+  private var isExhausted = false
 
   private val DEFAULT_FETCH_ORIENTATION_SET: Set[FetchOrientation] =
     Set(FetchOrientation.FETCH_NEXT, FetchOrientation.FETCH_FIRST)
@@ -247,6 +249,19 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     cleanup(CANCELED)
   }
 
+  def isBigResult() = {
+    if (resultList == null) {
+      false
+    } else {
+      info(s"$statementId isExhausted $isExhausted and result size ${resultList.get.size}")
+      val clean = isExhausted && (resultList.get.size > 50000)
+      if (clean) {
+        info("clean big result " + statementId)
+      }
+      clean
+    }
+  }
+
   def getResultSetSchema: StructType = if (result == null || result.schema.isEmpty) {
     new StructType().add("Result", "string")
   } else {
@@ -267,6 +282,11 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       logger.info("call fetch next")
     }
     val taken = iter.take(rowSetSize.toInt)
+
+    if (!iter.hasNext) {
+      isExhausted = true
+      info(statementId + " result is exhausted")
+    }
 
     RowSetBuilder.create(getResultSetSchema, taken.toSeq, session.getProtocolVersion)
   }
@@ -421,7 +441,23 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         KyuubiSparkUtil.classIsLoadable(conf.get(BACKEND_SESSION_TOKEN_UPDATE_CLASS))) {
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
       }
+
       debug(result.queryExecution.toString())
+      var userLimit = 0l
+      result.queryExecution.analyzed.transform {
+        case c: GlobalLimit =>
+          userLimit = c.maxRows.get
+          c
+      }
+      if (userLimit > 0) {
+        sparkSession.conf.set("spark.sql.user.limit", "true")
+        info(s"user ${session.getUserName} limit " + userLimit)
+        if (userLimit > 300000) {
+          userLimit = 300000
+          info("reset user max limit 30w")
+        }
+      }
+
       /*      if (inputTables != null) {
         info("table num " + inputTables.size)
         val physicalPlanInfo = result.queryExecution.simpleString
@@ -435,8 +471,11 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
         info("Executing query in incremental collection mode")
         result.toLocalIterator().asScala
       } else {
-        val resultLimit = conf.get(OPERATION_RESULT_LIMIT).toInt
+        var resultLimit = conf.get(OPERATION_RESULT_LIMIT).toInt
         if (resultLimit >= 0) {
+          if (userLimit > resultLimit) {
+            resultLimit = userLimit.toInt
+          }
           resultList = Some(result.take(resultLimit))
           logger.info("collect size " + resultList.get.size)
           resultList.get.toList.iterator
@@ -518,8 +557,6 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
     if (operationTimeout <= 0) {
       false
     } else {
-      // check only when it's in terminal state
-      //state.isTerminal && lastAccessTime + operationTimeout <= System.currentTimeMillis()
       lastAccessTime + operationTimeout <= System.currentTimeMillis()
     }
   }

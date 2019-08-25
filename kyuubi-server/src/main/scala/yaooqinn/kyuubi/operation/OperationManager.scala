@@ -112,7 +112,7 @@ private[kyuubi] class OperationManager private (name: String)
   private def removeTimedOutOperation(
     operationHandle: OperationHandle): Option[KyuubiOperation] = synchronized {
     Option[KyuubiOperation](handleToOperation.get(operationHandle))
-      .filter(_.isTimedOut)
+      .filter(o => o.isTimedOut || o.isBigResult)
       .map(_ => handleToOperation.remove(operationHandle))
   }
 

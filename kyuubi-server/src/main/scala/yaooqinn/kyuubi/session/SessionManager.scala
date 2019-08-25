@@ -156,7 +156,7 @@ private[kyuubi] class SessionManager private (
             } else {
               info(s"""current session $handle, LastAccessTime $lastAccessTime, NoOperationTime $noOperationTime, User $sessionUser""")
               if (sessionTimeout > 0 && session.getLastAccessTime + sessionTimeout <= current
-                && (!checkOperation || session.getNoOperationTime > sessionTimeout)) {
+                && (!checkOperation || noOperationTime > sessionTimeout)) {
                 warn("Session " + handle + " is Timed-out (last access: "
                   + new Date(session.getLastAccessTime) + ") and will be closed" + s" for user $sessionUser")
                 closeSession(handle)

@@ -100,7 +100,7 @@ private[kyuubi] class KyuubiSession(
     if (userAccess) {
       lastAccessTime = System.currentTimeMillis
     }
-    if (opHandleSet.isEmpty) {
+    if (opHandleSet.isEmpty && lastIdleTime == 0) {
       lastIdleTime = System.currentTimeMillis
     } else {
       lastIdleTime = 0
