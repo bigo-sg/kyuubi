@@ -412,7 +412,9 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
             val msg = e.getMessage.toLowerCase()
             if (!(msg.contains("table not found") || msg.contains("operator is only supported")
               || msg.contains("unable to create")
-              || msg.contains("invalid function") || msg.contains("aggregations"))) {
+              || msg.contains("invalid function") || msg.contains("aggregations")
+              || msg.contains("has an invalid number of aliases")
+              || msg.contains("udaf"))) {
               throw e
             }
         }

@@ -132,7 +132,7 @@ class SparkSessionWithUGI(
     }
   }
 
-  private def getOrCreate(sessionConf: Map[String, String]): Unit = SPARK_INSTANTIATION_LOCK.synchronized {
+  private def getOrCreate(sessionConf: Map[String, String]): Unit = {
     /*    val totalRounds = math.max(conf.get(BACKEND_SESSION_WAIT_OTHER_TIMES).toInt, 15)
     var checkRound = totalRounds
     val interval = conf.getTimeAsMs(BACKEND_SESSION_WAIT_OTHER_INTERVAL)
@@ -152,8 +152,13 @@ class SparkSessionWithUGI(
         _sparkSession = ss.newSession()
         configureSparkSession(sessionConf)
       case _ =>
-        setPartiallyConstructed(userName)
-        SPARK_INSTANTIATION_LOCK.notifyAll()
+        SPARK_INSTANTIATION_LOCK.synchronized {
+          if (isPartiallyConstructed(userName)) {
+            throw new KyuubiSQLException(s"initializing sparkcontext for $userName, please wait a moment")
+          } else {
+            setPartiallyConstructed(userName)
+          }
+        }
         create(sessionConf)
     }
   }
