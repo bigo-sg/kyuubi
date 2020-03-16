@@ -28,7 +28,7 @@ class ExecutionInfoSuite extends SparkFunSuite {
     val sessionId = UUID.randomUUID().toString
     val startTimeStamp = System.currentTimeMillis() - 1000L
     val user = KyuubiSparkUtil.getCurrentUserName
-    val info = new ExecutionInfo(statement, sessionId, startTimeStamp, user)
+    val info = new ExecutionInfo(statement, sessionId, startTimeStamp, user, "")
     assert(info.finishTimestamp === 0L)
     assert(info.executePlan === "")
     assert(info.detail === "")

@@ -49,6 +49,7 @@ import yaooqinn.kyuubi.utils.ReflectUtils
 import java.util.ArrayList
 import org.apache.hadoop.hive.ql.parse.SemanticException
 import org.apache.spark.sql.catalyst.plans.logical.GlobalLimit
+import org.apache.spark.sql.internal.VariableSubstitution
 
 class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging {
 
@@ -382,13 +383,16 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       val classLoader = SparkSQLUtils.getUserJarClassLoader(sparkSession)
       Thread.currentThread().setContextClassLoader(classLoader)
 
+      val vs = new VariableSubstitution(sparkSession.sessionState.conf)
+      val appid = sparkSession.sparkContext.applicationId
+
       KyuubiServerMonitor.getListener(session.getUserName).foreach {
         _.onStatementStart(
           statementId,
           session.getSessionHandle.getSessionId.toString,
-          statement,
+          vs.substitute(statement),
           statementId,
-          session.getUserName)
+          session.getUserName, appid)
       }
       sparkSession.sparkContext.setJobGroup(statementId, statement)
       KyuubiSparkUtil.setActiveSparkContext(sparkSession.sparkContext)

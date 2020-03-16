@@ -23,7 +23,8 @@ class ExecutionInfo(
     val statement: String,
     val sessionId: String,
     val startTimestamp: Long,
-    val userName: String) {
+    val userName: String,
+    val appId: String) {
   var finishTimestamp: Long = 0L
   var executePlan: String = ""
   var detail: String = ""

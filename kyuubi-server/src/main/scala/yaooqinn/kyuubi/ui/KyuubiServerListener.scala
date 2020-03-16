@@ -91,8 +91,9 @@ class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkLis
     sessionId: String,
     statement: String,
     groupId:   String,
-    userName:  String = "UNKNOWN"): Unit = synchronized {
-    val info = new ExecutionInfo(statement, sessionId, System.currentTimeMillis, userName)
+    userName:  String = "UNKNOWN",
+    appid:     String): Unit = synchronized {
+    val info = new ExecutionInfo(statement, sessionId, System.currentTimeMillis, userName, appid)
     info.state = ExecutionState.STARTED
     executionList.put(id, info)
     trimExecutionIfNecessary()
@@ -164,6 +165,7 @@ class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkLis
     val dt_begin = new Timestamp(begin_ts).toLocalDateTime
     val dt_end = new Timestamp(finished_ts).toLocalDateTime
     val dur = java.time.Duration.between(dt_begin, dt_end).getSeconds
+    val appid = info.appId
     val map = new LinkedHashMap[String, String]
     map += ("job_state" -> state.toString)
     map += ("user_name" -> user)
@@ -171,6 +173,7 @@ class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkLis
     map += ("end_time" -> dt_end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
     map += ("query" -> statment)
     map += ("duration" -> dur.toString)
+    map += ("appid" -> appid)
     mapper.writeValueAsString(map) + "\n"
   }
 }

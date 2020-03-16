@@ -54,7 +54,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
     val statement = "show tables"
     val groupId = UUID.randomUUID().toString
     val id = groupId
-    li.onStatementStart(id, sessionId, statement, groupId, user)
+    li.onStatementStart(id, sessionId, statement, groupId, user,"")
     assert(li.getExecutionList.nonEmpty)
     assert(li.getSession(sessionId).get.totalExecution === 1)
     assert(li.getExecutionList.head.groupId === groupId)
@@ -103,7 +103,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
     val li = new KyuubiServerListener(conf, null)
     li.onSessionCreated(ip, sessionId)
     assert(li.getSession(sessionId).get.userName === "UNKNOWN")
-    li.onStatementStart(statementId, sessionId, "show tables", statementId)
+    li.onStatementStart(statementId, sessionId, "show tables", statementId,"","")
     assert(li.getExecutionList.head.groupId === statementId)
     li.onJobStart(jobStart)
     assert(li.getExecutionList.head.jobId.contains("1"))
@@ -170,15 +170,15 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
     li.onSessionCreated(ip, sessionId)
     val statementId = UUID.randomUUID().toString
     val statement = "show tables"
-    li.onStatementStart(statementId, sessionId, statement, statementId)
+    li.onStatementStart(statementId, sessionId, statement, statementId,"","")
     assert(li.getExecutionList.size === 1)
     assert(li.getExecutionList.forall(_.finishTimestamp === 0L))
     val statementId2 = UUID.randomUUID().toString
-    li.onStatementStart(statementId2, sessionId, statement, statementId2)
+    li.onStatementStart(statementId2, sessionId, statement, statementId2,"","")
     assert(li.getExecutionList.size === 2)
     assert(li.getExecutionList.forall(_.finishTimestamp === 0L))
     val statementId3 = UUID.randomUUID().toString
-    li.onStatementStart(statementId3, sessionId, statement, statementId3)
+    li.onStatementStart(statementId3, sessionId, statement, statementId3,"","")
     assert(li.getExecutionList.size === 3)
     assert(li.getExecutionList.forall(_.finishTimestamp === 0L))
 
@@ -196,7 +196,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
     assert(li.getExecutionList.forall(_.finishTimestamp !== 0L))
     // trim id 3
     val statementId4 = UUID.randomUUID().toString
-    li.onStatementStart(statementId4, sessionId, statement, statementId4)
+    li.onStatementStart(statementId4, sessionId, statement, statementId4,"","")
     assert(li.getExecutionList.size === 1)
     assert(li.getExecutionList.forall(_.finishTimestamp === 0L))
 
@@ -205,7 +205,7 @@ class KyuubiServerListenerSuite extends SparkFunSuite with MockitoSugar {
     li2.onSessionCreated(ip, sessionId)
 
     (0 until 30).foreach { id =>
-      li2.onStatementStart(id.toString, sessionId, statement, id.toString)
+      li2.onStatementStart(id.toString, sessionId, statement, id.toString,"","")
     }
     li2.getExecutionList.take(5).foreach(_.finishTimestamp = 1)
     // trim 2 statement
