@@ -157,7 +157,7 @@ class KyuubiServerListener(conf: SparkConf, userAuditDir: File) extends SparkLis
   private def generateLog(info: ExecutionInfo) = {
     val mapper = new ObjectMapper() with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
-    val statment = info.statement.replace("\n", " ").replace("\"", "'").replace("\t", " ").replace("\r", " ")
+    val statment = info.statement.replaceAll("--.*", " ").replace("\n", " ").replace("\"", "'").replace("\t", " ").replace("\r", " ")
     val begin_ts = info.startTimestamp
     val finished_ts = info.finishTimestamp
     val state = info.state

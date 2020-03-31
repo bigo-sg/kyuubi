@@ -50,6 +50,7 @@ import java.util.ArrayList
 import org.apache.hadoop.hive.ql.parse.SemanticException
 import org.apache.spark.sql.catalyst.plans.logical.GlobalLimit
 import org.apache.spark.sql.internal.VariableSubstitution
+import org.apache.spark.sql.execution.QueryExecution
 
 class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging {
 
@@ -438,6 +439,22 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
           localizeAndAndResource(path)
         case _ =>
       }
+
+      var userLimit = 0l
+      new QueryExecution(sparkSession, parsedPlan).analyzed.transformDown {
+        case c: GlobalLimit =>
+          userLimit = c.maxRows.get
+          c
+      }
+      if (userLimit > 0) {
+        sparkSession.conf.set("spark.sql.user.limit", "true")
+        info(s"user ${session.getUserName} custom limit " + userLimit)
+        if (userLimit > 300000) {
+          userLimit = 300000
+          info("reset user max limit 30w")
+        }
+      }
+
       result = SparkSQLUtils.toDataFrame(sparkSession, parsedPlan)
       KyuubiServerMonitor.getListener(session.getUserName).foreach {
         _.onStatementParsed(statementId, result.queryExecution.toString())
@@ -446,22 +463,6 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
       if (conf.get(BACKEND_SESSION_LONG_CACHE).toBoolean &&
         KyuubiSparkUtil.classIsLoadable(conf.get(BACKEND_SESSION_TOKEN_UPDATE_CLASS))) {
         KyuubiSparkExecutorUtils.populateTokens(sparkSession.sparkContext, session.ugi)
-      }
-
-      debug(result.queryExecution.toString())
-      var userLimit = 0l
-      result.queryExecution.analyzed.transform {
-        case c: GlobalLimit =>
-          userLimit = c.maxRows.get
-          c
-      }
-      if (userLimit > 0) {
-        sparkSession.conf.set("spark.sql.user.limit", "true")
-        info(s"user ${session.getUserName} limit " + userLimit)
-        if (userLimit > 300000) {
-          userLimit = 300000
-          info("reset user max limit 30w")
-        }
       }
 
       /*      if (inputTables != null) {
@@ -473,6 +474,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
           throw new KyuubiSQLException("found partition " + num.get + " exceed upper limit " + SqlChecker.getPartLimit(conf))
         }
       }*/
+
       iter = if (incrementalCollect) {
         info("Executing query in incremental collection mode")
         result.toLocalIterator().asScala
