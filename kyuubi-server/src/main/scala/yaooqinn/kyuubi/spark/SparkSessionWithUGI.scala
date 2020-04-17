@@ -208,6 +208,7 @@ class SparkSessionWithUGI(
           info("extension finished")
         }
         cache.set(userName, _sparkSession)
+        SparkSession.setDefaultSession(_sparkSession)
         info(s"$userName init sparkcontext finished")
       }
     } catch {

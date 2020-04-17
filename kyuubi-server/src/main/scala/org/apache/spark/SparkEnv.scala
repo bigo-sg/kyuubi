@@ -46,6 +46,7 @@ import org.apache.spark.util.{ RpcUtils, Utils }
 import yaooqinn.kyuubi.Logging
 import yaooqinn.kyuubi.utils.ReflectUtils
 import java.io.IOException
+import org.apache.commons.lang3.exception.ExceptionUtils
 
 /**
  * :: DeveloperApi ::
@@ -179,7 +180,8 @@ object SparkEnv extends Logging {
       one
     } else {
       info("miss env for " + user)
-      throw new IOException(s"miss env for $user")
+      debug(ExceptionUtils.getStackTrace(new IOException(s"miss env for $user")))
+      one
     }
   }
 

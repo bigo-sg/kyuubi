@@ -306,8 +306,10 @@ private[kyuubi] class FrontendService private(name: String, beService: BackendSe
       val statement = req.getStatement
       val runAsync = req.isRunAsync
       val operationHandle = if (runAsync) {
+         info("use async execute")
         beService.executeStatementAsync(sessionHandle, statement)
       } else {
+        info("use sync execute")
         beService.executeStatement(sessionHandle, statement)
       }
       resp.setOperationHandle(operationHandle.toTOperationHandle)
@@ -463,6 +465,7 @@ private[kyuubi] class FrontendService private(name: String, beService: BackendSe
     try {
       beService.closeOperation(new OperationHandle(req.getOperationHandle))
       resp.setStatus(OK_STATUS)
+      info("close operation " + req.getOperationHandle.getOperationId)
     } catch {
       case e: Exception =>
         warn("Error closing operation: ", e)
