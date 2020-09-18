@@ -42,6 +42,7 @@ import SparkSessionWithUGI._
 import java.util.concurrent.FutureTask
 import java.util.concurrent.Callable
 import yaooqinn.kyuubi.operation.PartitionChecker
+import java.util.concurrent.TimeoutException
 
 class SparkSessionWithUGI(
   user:  UserGroupInformation,
@@ -221,6 +222,12 @@ class SparkSessionWithUGI(
         }
         stopContext()
 
+        if (e.isInstanceOf[TimeoutException]) {
+          val ke = new KyuubiSQLException(
+            s"Waiting timeout for Spark initing for [$userName]", "08S01", 1001, findCause(e))
+          sparkException.foreach(ke.addSuppressed)
+          throw ke
+        }
         val ke = new KyuubiSQLException(
           s"Get SparkSession for [$userName] failed", "08S01", 1001, findCause(e))
         sparkException.foreach(ke.addSuppressed)

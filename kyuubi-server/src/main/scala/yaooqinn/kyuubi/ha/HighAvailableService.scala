@@ -64,6 +64,7 @@ private[kyuubi] abstract class HighAvailableService(name: String, server: Kyuubi
   protected final def publishService(): Unit = {
     try {
       val instanceURI = getServerInstanceURI(server.feService)
+      info("instanceURI " + instanceURI)
       val pathPrefix = serviceRootNamespace + "/" +
         "serverUri=" + instanceURI + ";" +
         "version=" + KYUUBI_VERSION + ";" +
@@ -225,6 +226,6 @@ object HighAvailableService {
     if (service == null || service.getServerIPAddress == null) {
       throw new ServiceException("Unable to address the server; it hasn't been initialized yet.")
     }
-    service.getServerIPAddress.getHostName + ":" + service.getPortNumber
+    service.getServerIPAddress.getHostAddress + ":" + service.getPortNumber
   }
 }
