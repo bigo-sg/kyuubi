@@ -78,7 +78,7 @@ class KyuubiOperation(session: KyuubiSession, statement: String) extends Logging
   private var statementId: String = _
 
   private var resultList: Option[Array[Row]] = _
-  private var isExhausted = false
+  var isExhausted = false
 
   private val DEFAULT_FETCH_ORIENTATION_SET: Set[FetchOrientation] =
     Set(FetchOrientation.FETCH_NEXT, FetchOrientation.FETCH_FIRST)

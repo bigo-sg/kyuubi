@@ -325,7 +325,8 @@ private[kyuubi] class KyuubiSession(
       for (op <- opHandleSet.toSeq) {
         try {
           val state = operationManager.getOperation(op).getStatus.getState
-          if (!state.isTerminal) {
+          val isExhausted = operationManager.getOperation(op).isExhausted
+          if (!state.isTerminal || !isExhausted) {
             allOver = false
           }
         } catch {
